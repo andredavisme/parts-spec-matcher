@@ -66,7 +66,7 @@ Describe the core workflow from the perspective of a real user. Walk through a s
 - Each action the user takes
 - What the system returns
 - Any backend roles (e.g., database administrator)
-- The stated objective (the "why")
+- The stated objective (the “why”)
 
 **Example:**
 ```
@@ -195,36 +195,38 @@ This project uses **vanilla HTML/CSS/JavaScript** hosted on **GitHub Pages** as 
 - Source lives in a `gh-pages` branch of the same repository (`andredavisme/parts-spec-matcher`)
 - GitHub Pages serves the branch directly at `https://andredavisme.github.io/parts-spec-matcher/`
 - No CI/CD required — pushing to `gh-pages` deploys immediately
-- The repository must have Pages enabled: **Settings → Pages → Source: Deploy from branch → `gh-pages` / `/ (root)`**
+- **GitHub auto-enables Pages when the branch is named exactly `gh-pages`.** No manual configuration in Settings is required when using this branch name. If you use any other branch name (e.g., `frontend`, `main`), you will need to manually enable Pages via **Settings → Pages → Source: Deploy from branch**.
 
 ### Supabase JS Client
 The frontend connects to Supabase using the `@supabase/supabase-js` CDN build (no npm required):
 
 ```html
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script>
-  const { createClient } = supabase;
-  const client = createClient('YOUR_SUPABASE_URL', 'YOUR_PUBLISHABLE_KEY');
-</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/config.js"></script>
 ```
 
-- Use the **publishable key** (not the service role key) — safe for browser exposure
+```javascript
+// js/config.js
+const supabase = window.supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_ANON_KEY');
+```
+
+- Use the **anon key** (not the service role key) — safe for browser exposure
 - All data access is protected by Supabase Auth + RLS policies
-- The publishable key and project URL are safe to commit to the `gh-pages` branch since RLS enforces all access control
+- The anon key and project URL are safe to commit to the `gh-pages` branch since RLS enforces all access control
 
 ### Auth Flow
 Authentication uses Supabase's built-in email/password provider:
 
 ```javascript
 // Sign in
-const { data, error } = await client.auth.signInWithPassword({ email, password });
+const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
 // Sign out
-await client.auth.signOut();
+await supabase.auth.signOut();
 
 // Check session on page load
-const { data: { session } } = await client.auth.getSession();
-if (!session) { /* redirect to login */ }
+const { data: { session } } = await supabase.auth.getSession();
+if (!session) { /* show login view */ }
 ```
 
 - Sales rep accounts are created in the Supabase dashboard under **Authentication → Users**
@@ -238,24 +240,35 @@ if (!session) { /* redirect to login */ }
 After inserting `request_spec_values`, the frontend triggers matching via Supabase RPC:
 
 ```javascript
-const { data: matches, error } = await client.rpc('run_match', { p_request_id: requestId });
+const { data: matches, error } = await supabase
+  .schema('parts_matcher')
+  .rpc('run_match', { p_request_id: requestId });
 ```
 
 The function is defined in the `parts_matcher` schema. To call schema-qualified RPCs from the JS client, the function must be accessible to the `authenticated` role — which is handled by the `SECURITY DEFINER` declaration on `run_match`.
 
 ### Page Structure
-The frontend is organized as a multi-page static site:
+The frontend is organized as a **single-page app** (`index.html`) with multiple named views toggled via CSS classes. This avoids cross-page auth state management and simplifies the GitHub Pages deployment.
+
+| View ID | Purpose |
+|---|---|
+| `#view-login` | Email/password login form |
+| `#view-selector` | Product category + type dropdowns; sales rep starting point |
+| `#view-request` | Dynamic spec entry form drawn from `quote_template_fields` |
+| `#view-results` | Ranked match results from `match_results` |
+| `#view-admin` | Admin panel — reference and catalog data management (admin only) |
+
+Supporting files:
 
 | File | Purpose |
 |---|---|
-| `index.html` | Login page |
-| `select.html` | Product type selector — sales rep starting point |
-| `request.html` | Spec entry form — fields drawn from `quote_template_fields` |
-| `results.html` | Match results view — ranked list from `match_results` |
-| `admin.html` | Admin panel — reference and catalog data management (admin only) |
-| `js/supabase-client.js` | Shared Supabase client initialization |
-| `js/auth.js` | Shared session check / redirect logic |
-| `css/style.css` | Shared styles |
+| `css/styles.css` | All styles |
+| `js/config.js` | Supabase client initialization |
+| `js/auth.js` | `signIn()`, `signOut()`, `getSession()` helpers |
+| `js/selector.js` | Category → product type cascade loader |
+| `js/app.js` | View routing, session restore on load, login/logout handlers |
+
+Additional JS modules (`js/request.js`, `js/results.js`, `js/admin.js`) will be added as those views are built.
 
 ---
 
