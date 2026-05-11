@@ -254,50 +254,70 @@ Milestone 4 complete. Match engine functional and validated end-to-end.
 - Frontend stack: Vanilla HTML/CSS/JS hosted on GitHub Pages (`gh-pages` branch) ✅
 - Supabase anon key for client queries ✅
 - Auth strategy: Supabase email/password for sales reps ✅
-- RLS: `authenticated_read` policies confirmed on all relevant tables ✅
-- `GRANT EXECUTE ON FUNCTION parts_matcher.run_match TO authenticated` applied ✅
+- RLS: `authenticated_read` + `authenticated_insert` policies on all relevant `parts_matcher` tables ✅
+- `public.run_match` wrapper function with `GRANT EXECUTE TO authenticated` ✅
+- `public.pm_*` views over all `parts_matcher` tables with `security_invoker = false` ✅
 
 ### Work Completed
 
 **Step 1 — Login Page + Product Type Selector**
 - Created `gh-pages` branch from `main`
-- Pushed 6 files:
-  - `index.html` — single-page shell with two views: `#view-login` and `#view-selector`
-  - `css/styles.css` — clean, responsive styles; navy (`#0f3460`) primary color
-  - `js/config.js` — Supabase client initialization using project URL + anon key
-  - `js/auth.js` — `signIn()`, `signOut()`, `getSession()` helpers
-  - `js/selector.js` — loads `product_categories` → `product_types` cascade; enables Start Request button
-  - `js/app.js` — view routing, session restore on load, login form submit, logout
+- Pushed 6 files: `index.html`, `css/styles.css`, `js/config.js`, `js/auth.js`, `js/selector.js`, `js/app.js`
 - Session-aware: existing session bypasses login and goes straight to selector
 
 **Step 2 — Request Form + Results View**
 - Updated `index.html` to include all 4 views: `#view-login`, `#view-selector`, `#view-request`, `#view-results`
-- Added `js/request.js`:
-  - Loads the active `quote_template` for the selected `product_type_id`
-  - Fetches `quote_template_fields` joined to `spec_definitions` and `spec_units`
-  - Renders dynamic input fields (`number` for `nearest`/`range` match types; `text` for `exact`)
-  - On submit: inserts `customer_requests`, inserts `request_spec_values`, calls `run_match` RPC, navigates to results
-- Added `js/results.js`:
-  - Renders ranked match results table: Brand, Part Number, Score (with visual bar), Vendor Priority, Miss Notes
-- Updated `css/styles.css` with styles for request form, meta fields grid, results table, and score bars
-- Updated `js/app.js` with full 4-view navigation: login → selector → request → results, plus back navigation
+- `js/request.js`: loads active template, renders dynamic spec fields, inserts `customer_requests` + `request_spec_values`, calls `run_match` RPC
+- `js/results.js`: renders ranked results table with score bars, brand, part number, vendor priority, miss notes
+- Full 4-view navigation with back buttons and logout on all views
 
-**GitHub Pages Hosting**
-- Branch named `gh-pages` — GitHub auto-enables Pages for this branch name without manual configuration
-- App served at: https://andredavisme.github.io/parts-spec-matcher/
+**Step 3 — Live End-to-End Test**
+- Signed in as `dev@chronicle.local` (admin)
+- Tested Conveyor Roller: match results screen returned 3 ranked results ✅
+- Tested Deep Groove Ball Bearing and Chain Coupling: no results (expected — no catalog items for those types yet) ✅
+
+**GitHub Pages**
+- App live at: https://andredavisme.github.io/parts-spec-matcher/
 
 ### Errors & Fixes
 
-**RPC schema qualification not supported**
-- Initial implementation used `.schema('parts_matcher').rpc('run_match', ...)` — this pattern is not supported by the Supabase JS v2 client. `.schema()` chaining only works for table queries, not RPC calls.
-- **Fix:** Changed to `supabase.rpc('run_match', { p_request_id: requestId })` directly on the client.
-- **Supporting fix:** Applied migration `grant_run_match_to_authenticated` — `GRANT EXECUTE ON FUNCTION parts_matcher.run_match(integer) TO authenticated`. This is required because `run_match` lives in a non-public schema; granting execute to `authenticated` makes it callable via the PostgREST API with a valid JWT.
-- **Pattern note added to `docs/build-guide.md`** — the Supabase JS client always calls RPC via the root client regardless of function schema. For non-public schema functions: use `SECURITY DEFINER`, set an explicit `search_path`, and `GRANT EXECUTE` to the appropriate role.
+**1. CDN global name collision**
+- `const supabase` in `config.js` collided with the `supabase` global exposed by the jsdelivr CDN bundle.
+- **Fix:** Renamed client variable to `sbClient` across all JS files.
+
+**2. Stale anon key**
+- `config.js` contained an old anon key from a previous session; Supabase returned `Invalid API key`.
+- **Fix:** Fetched current key via MCP and updated `config.js`.
+
+**3. Password reset via SQL — `crypt()` schema path**
+- First password reset attempt used `crypt()` without schema qualification; function silently no-oped because `pgcrypto` lives in the `extensions` schema.
+- **Fix:** Used `extensions.crypt()` and `extensions.gen_salt()` explicitly.
+
+**4. `parts_matcher` schema not exposed to PostgREST**
+- `.schema('parts_matcher').from(...)` queries returned 406, then 404 after the `ALTER ROLE` attempt.
+- `ALTER ROLE authenticator SET pgrst.db_schemas` via SQL is overridden by Supabase's managed configuration on reload and cannot be set this way.
+- **Fix:** Created `public.pm_*` views over all `parts_matcher` tables. All JS queries updated to use `pm_*` view names with no `.schema()` call.
+
+**5. `security_invoker = true` blocked cross-schema view reads**
+- Views with `security_invoker = true` over `parts_matcher` tables returned 403 because PostgREST couldn't resolve the cross-schema ownership chain for the calling role.
+- **Fix:** Set `security_invoker = false` (security definer) on all `pm_*` views. Access control is enforced at the view grant level (`authenticated` role) and via RLS on the underlying tables for writes.
+
+**6. INSERT permission denied for sequence**
+- INSERT to `pm_customer_requests` returned `permission denied for sequence customer_requests_id_seq`.
+- **Fix:** `GRANT USAGE, SELECT ON SEQUENCE parts_matcher.customer_requests_id_seq TO authenticated` and same for `request_spec_values_id_seq`. Also granted `INSERT` directly on the underlying tables.
+
+**7. `run_match` RPC 404**
+- `supabase.rpc('run_match', ...)` returned 404 because PostgREST only exposes functions in the `public` schema by default, and `parts_matcher.run_match` is not in `public`.
+- **Fix:** Created `public.run_match(p_request_id integer)` as a `SECURITY DEFINER` wrapper that calls `parts_matcher.run_match`. Granted `EXECUTE` to `authenticated`.
+
+**8. Wrong column names in `results.js`**
+- `results.js` referenced `out_brand_name` and `out_miss_notes`; actual `run_match` return columns are `out_brand` and `out_match_notes`.
+- **Fix:** Updated column references in `results.js` to match the actual function signature.
 
 ### Next Steps → Milestone 6
-- Create a test sales rep user in Supabase Authentication → Users
-- Load https://andredavisme.github.io/parts-spec-matcher/ and validate the full end-to-end flow: login → selector → Conveyor Roller request form → run match → results
 - Begin Milestone 6: Admin / DBA Tooling
+- Admin screens needed: Catalog Items (primary), Vendors, Brands, Product Types, Spec Definitions, Vendor Item Priority
+- CSV bulk upload support for catalog items and specs
 
 ---
 
@@ -305,13 +325,12 @@ Milestone 4 complete. Match engine functional and validated end-to-end.
 **Status:** 🔲 Not Started
 
 ### Prior Work
-Milestone 5 complete. Sales rep interface functional end-to-end.
+Milestone 5 complete. Sales rep interface validated end-to-end. Conveyor Roller match results confirmed working in production.
 
 ### Dependencies
-- Defined admin role and permissions in Supabase auth
-- RLS policies reviewed per table
-- Admin screens: Vendors, Brands, Product Categories, Product Types, Spec Definitions, Catalog Items, Vendor Item Priority
-- CSV bulk upload templates for all reference and catalog tables
+- `dev@chronicle.local` confirmed as admin user (`parts_matcher_role: admin` in app_metadata) ✅
+- RLS admin write policies already in place on all `parts_matcher` tables ✅
+- `pm_*` public views in place for reads ✅
 
 ### Work Completed
 _To be filled in as work progresses._
