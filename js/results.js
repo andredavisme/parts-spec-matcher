@@ -29,11 +29,11 @@ function renderResults(results, productTypeName) {
   tableBody.innerHTML = '';
   results.forEach((row, i) => {
     const score = parseFloat(row.out_match_score || 0);
-    const misses = row.out_miss_notes || '\u2014';
+    const misses = row.out_match_notes || '\u2014';
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="rank-cell">${i + 1}</td>
-      <td>${row.out_brand_name || '\u2014'}</td>
+      <td>${row.out_brand || '\u2014'}</td>
       <td class="mono">${row.out_part_number || '\u2014'}</td>
       <td>
         <span class="score-label">${score.toFixed(1)}</span>
