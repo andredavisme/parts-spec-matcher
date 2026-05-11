@@ -25,7 +25,7 @@ Represent actual products from vendor/brand catalogs.
 |---|---|
 | `catalog_items` | Individual stocked or quotable items with part number and brand reference |
 | `catalog_item_specs` | Spec values for each catalog item, keyed to `spec_definitions` |
-| `vendor_item_priority` | Priority rank when multiple vendors/brands supply an equivalent item |
+| `vendor_item_priority` | Priority rank per vendor + brand + product type combination |
 | `source_documents` | Record of the catalog PDF or URL each item was sourced from |
 
 ### Workflow Tables
@@ -41,13 +41,16 @@ Support the sales rep quote workflow.
 
 ## Vendor Priority Logic
 
-When multiple brands supply an identical or equivalent item, the system uses the `vendor_item_priority` table to rank results. Priority is set by the DBA and can reflect:
+When multiple brands supply an identical or equivalent item, the system uses the `vendor_item_priority` table to rank results. Priority is set per **vendor + brand + product type** combination, and can reflect:
 
-- Preferred vendor relationships
+- Preferred vendor/brand relationships
 - Margin or pricing agreements
 - Stock availability tiers
+- Application-specific preferences (e.g., heavy duty vs. standard)
 
-Match results are returned ordered by: (1) spec match completeness, (2) vendor priority rank.
+Match results are returned ordered by: (1) spec match completeness, (2) vendor priority rank (ascending).
+
+> **Schema note:** The `vendor_item_priority` table was updated in Milestone 2 (migration: `vendor_item_priority_add_brand_id`) to add `brand_id` and replace the original `UNIQUE (vendor_id, product_type_id)` constraint with `UNIQUE (vendor_id, brand_id, product_type_id)`. This allows multiple brands per vendor to be ranked independently for a given product type.
 
 ## Data Integrity Rules
 
@@ -60,7 +63,7 @@ Match results are returned ordered by: (1) spec match completeness, (2) vendor p
 
 ## Catalog Data Sourcing
 
-Initial data will be entered manually by the DBA from:
+Initial placeholder data has been entered for Conveyor Roller (3 items, 3 brands) to support end-to-end workflow testing. Real catalog data will be sourced from:
 - Brand-supplied PDF catalogs
 - Public-facing brand web catalogs
 - Vendor price sheets
@@ -79,7 +82,7 @@ All write operations are gated by `parts_matcher.is_admin()` RLS helper, which c
 ### 2. CSV Bulk Upload (Milestone 6)
 The admin screen will provide downloadable CSV templates for each table. The DBA can populate a template and upload it to batch-insert or batch-update records. This is the recommended path for:
 - Initial catalog item entry from brand PDF/web catalogs
-- Bulk spec value updates
-- Vendor priority table setup across many product types
+- Bulk spec value updates across many items
+- Vendor priority table setup across many product types and brands
 
 CSV templates will be generated from the live schema and include column headers, data type hints, and example rows. Uploaded CSVs will be validated against the schema before insert.

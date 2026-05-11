@@ -79,7 +79,7 @@ None.
 ---
 
 ## Milestone 2 — Seed Data & Catalog Entry
-**Status:** 🔄 In Progress  
+**Status:** ✅ Complete  
 **Date:** 2026-05-11
 
 ### Prior Work
@@ -93,19 +93,20 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
 ### Work Completed
 
 **Vendor Seed**
-- Inserted 1 vendor: `Eastern Industrial Automation` (ID: 1) — primary distributor, source: easternia.com
+- Inserted 1 vendor: `Eastern Industrial Automation` (ID: 1)
 
 **Brand Seed**
 - Inserted 203 brands (IDs 1–203) sourced from easternia.com/brands, all linked to `primary_vendor_id = 1`
-- Duplicate entries deduplicated; trademark symbols (®, ™) stripped from names
+- Duplicate entries deduplicated; trademark symbols stripped from names
 
 **Product Types — Full Expansion**
 - Added 38 new product types across all 8 previously empty categories (IDs 6–43)
-- All 10 categories now have at least 4–5 product types
-- Final product type count: 43 across 10 categories
+- Final count: 43 product types across 10 categories
 
-| Category | Product Types Added |
+| Category | Product Types |
 |---|---|
+| Conveyor Components | Conveyor Roller, Conveyor Pulley |
+| Bearings | Deep Groove Ball Bearing, Tapered Roller Bearing, Pillow Block Bearing |
 | Chain & Sprockets | Roller Chain, Engineering Class Chain, Conveyor Chain, Sprocket, Chain Coupling |
 | Couplings & Clutches | Jaw Coupling, Grid Coupling, Disc Coupling, Rigid Coupling, Overrunning Clutch, Torque Limiter |
 | Gearboxes & Speed Reducers | Worm Gear Reducer, Helical Gear Reducer, Bevel Gear Reducer, Parallel Shaft Reducer, Right Angle Reducer |
@@ -116,26 +117,43 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
 | Pneumatics & Hydraulics | Pneumatic Cylinder, Hydraulic Cylinder, Solenoid Valve, Pressure Regulator, Hydraulic Pump |
 
 **Spec Definitions — Full Coverage**
-- Added spec definitions for all product types previously missing them: Conveyor Pulley, Tapered Roller Bearing, Pillow Block Bearing, and all 38 new types
-- All 43 product types now have spec definitions (IDs 1–228 total)
-- Each product type has 3–8 spec fields; required fields marked with `is_required = true`
-- Match types assigned per field: `exact`, `range`, or `nearest` per industrial convention
+- Added spec definitions for all 43 product types (IDs 1–228 total)
+- Each product type has 3–8 spec fields with required flags, match types, and units
 
-**Admin Screen & CSV Upload Design Decisions**
-- Admin CRUD for all reference tables (vendors, brands, product types, spec definitions, catalog items, vendor priority) handled via frontend admin screen in Milestone 6
-- Existing `parts_matcher.is_admin()` RLS helper gates all write operations — no additional DB changes needed
-- **CSV bulk upload templates** will be made available in the admin screen for all reference and catalog tables, enabling DBA to update data via file upload without developer intervention (see `docs/data-architecture.md` for table schemas)
+**Admin & CSV Upload Design**
+- Admin CRUD handled via frontend admin screen in Milestone 6
+- CSV bulk upload templates to be provided for all reference and catalog tables (see `docs/data-architecture.md`)
+
+**Placeholder Catalog Items — Conveyor Roller**
+- Added 1 `source_documents` record (ID: 1): `Placeholder Catalog - Conveyor Roller Test Data` (type: manual)
+- Added 3 `catalog_items` for Conveyor Roller (product_type_id: 1):
+
+| ID | Brand | Part Number | Description |
+|---|---|---|---|
+| 1 | Browning | BRW-CR-190-24-0500 | Steel, 1.9" dia × 24" BF, 1/2" shaft |
+| 2 | Dodge | DGE-CR-250-36-0750 | Galvanized, 2.5" dia × 36" BF, 3/4" shaft |
+| 3 | Rexnord | RXN-CR-350-48-1000 | Heavy Duty, 3.5" dia × 48" BF, 1" shaft |
+
+- Added 24 `catalog_item_specs` records (8 specs × 3 items): roller_diameter, roller_length, shaft_diameter, load_rating, max_speed, material, bearing_type, finish
+- Added 3 `vendor_item_priority` records for Conveyor Roller:
+  - Rank 1: Browning (preferred — best margin)
+  - Rank 2: Dodge (good availability)
+  - Rank 3: Rexnord (heavy duty applications)
 
 ### Errors & Fixes
-None encountered.
 
-### Remaining Work (Milestone 2)
-- Add `source_documents` entries for available catalogs (PDF or URL)
-- Enter `catalog_items` and `catalog_item_specs` for Conveyor Roller (first end-to-end test)
-- Add `vendor_item_priority` entries once first catalog items are in place
+**Schema Fix — `vendor_item_priority` missing `brand_id`**
+- Original unique constraint was `(vendor_id, product_type_id)` — only one row per vendor+product type, which made brand-level priority impossible with a single vendor
+- **Fix:** Applied migration `vendor_item_priority_add_brand_id`
+  - Dropped old unique constraint
+  - Added `brand_id integer REFERENCES parts_matcher.brands(id)`
+  - Added new unique constraint `(vendor_id, brand_id, product_type_id)`
+- Two orphaned rows (IDs 1–2) inserted before fix were left in place with `brand_id = NULL`; these should be cleaned up or deleted by DBA
 
 ### Next Steps → Milestone 3
-_To be defined upon Milestone 2 completion._
+- Replace placeholder catalog items with real part data from brand catalogs
+- Run the end-to-end match workflow manually to validate before building the query engine
+- Begin Milestone 3: Quote Template Builder
 
 ---
 
@@ -143,11 +161,11 @@ _To be defined upon Milestone 2 completion._
 **Status:** 🔲 Not Started
 
 ### Prior Work
-Milestone 2 complete. Reference data and initial catalog items seeded.
+Milestone 2 complete. Reference data seeded, placeholder catalog items in place for Conveyor Roller.
 
 ### Dependencies
-- `spec_definitions` and `spec_units` tables populated for at least Conveyor Rollers
-- `quote_templates` and `quote_template_fields` tables created
+- `spec_definitions` and `spec_units` populated for Conveyor Roller ✅
+- `quote_templates` and `quote_template_fields` tables created ✅
 
 ### Work Completed
 _To be filled in as work progresses._
@@ -167,8 +185,8 @@ _To be defined upon Milestone 3 completion._
 Milestone 3 complete. Quote templates built and testable.
 
 ### Dependencies
-- Catalog items with complete spec values for at least one product type
-- Vendor priority data entered for at least one product type
+- Catalog items with complete spec values for at least one product type ✅
+- Vendor priority data entered for at least one product type ✅
 - Defined tolerance / matching rules per spec field type
 
 ### Work Completed
@@ -212,8 +230,8 @@ Milestone 5 complete. Sales rep interface functional.
 
 ### Dependencies
 - Defined admin role and permissions in Supabase auth
-- RLS policies reviewed and applied per table
-- Admin screens to cover: Vendors, Brands, Product Categories, Product Types, Spec Definitions, Catalog Items, Vendor Item Priority
+- RLS policies reviewed per table
+- Admin screens: Vendors, Brands, Product Categories, Product Types, Spec Definitions, Catalog Items, Vendor Item Priority
 - CSV bulk upload templates for all reference and catalog tables
 
 ### Work Completed
