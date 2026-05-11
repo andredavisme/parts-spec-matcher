@@ -57,10 +57,77 @@
     </main>
   </div>
 
+  <!-- REQUEST FORM VIEW -->
+  <div id="view-request" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher</span>
+      <div class="header-right">
+        <button id="request-back-btn" class="btn-secondary">&larr; Back</button>
+        <span id="user-email-request" class="user-email"></span>
+        <button id="logout-btn-request" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="form-main">
+      <h2>Spec Request &mdash; <span id="request-product-type-name"></span></h2>
+      <p class="hint">Enter the customer&rsquo;s specification values. Required fields are marked <span class="required-star">*</span></p>
+      <form id="request-form" novalidate>
+        <div class="meta-fields">
+          <div class="field meta-field">
+            <label for="customer-name">Customer Name</label>
+            <input type="text" id="customer-name" placeholder="Optional" />
+          </div>
+          <div class="field meta-field">
+            <label for="customer-ref">Customer Reference</label>
+            <input type="text" id="customer-ref" placeholder="Optional" />
+          </div>
+        </div>
+        <hr class="form-divider" />
+        <p id="request-loading" class="hint hidden">Loading fields&hellip;</p>
+        <div id="request-fields"></div>
+        <p id="request-error" class="error-msg hidden"></p>
+        <button type="submit" id="request-submit-btn" class="btn-primary">Run Match &rarr;</button>
+      </form>
+    </main>
+  </div>
+
+  <!-- RESULTS VIEW -->
+  <div id="view-results" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher</span>
+      <div class="header-right">
+        <button id="results-back-btn" class="btn-secondary">&larr; New Request</button>
+        <span id="user-email-results" class="user-email"></span>
+        <button id="logout-btn-results" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="results-main">
+      <h2>Match Results &mdash; <span id="results-product-type-name"></span></h2>
+      <p id="results-count" class="hint"></p>
+      <p id="results-empty" class="hint hidden">No matches found for the provided specifications.</p>
+      <div id="results-table-wrap" class="hidden">
+        <table class="results-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Brand</th>
+              <th>Part Number</th>
+              <th>Score</th>
+              <th>Priority</th>
+              <th>Misses</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/selector.js"></script>
+  <script src="js/request.js"></script>
+  <script src="js/results.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
