@@ -4,8 +4,7 @@ let currentFields = [];
 
 async function loadTemplate(productTypeId) {
   const { data, error } = await sbClient
-    .schema('parts_matcher')
-    .from('quote_templates')
+    .from('pm_quote_templates')
     .select('id, product_type_id')
     .eq('product_type_id', productTypeId)
     .eq('is_active', true)
@@ -18,20 +17,19 @@ async function loadTemplate(productTypeId) {
 
 async function loadTemplateFields(templateId) {
   const { data, error } = await sbClient
-    .schema('parts_matcher')
-    .from('quote_template_fields')
+    .from('pm_quote_template_fields')
     .select(`
       id,
       sort_order,
       is_required,
       display_hint,
       spec_definition_id,
-      spec_definitions (
+      pm_spec_definitions (
         id,
         name,
         display_label,
         match_type,
-        spec_units ( abbreviation )
+        pm_spec_units ( abbreviation )
       )
     `)
     .eq('template_id', templateId)
@@ -49,8 +47,8 @@ function renderRequestForm(productTypeName, fields) {
   formBody.innerHTML = '';
 
   fields.forEach(field => {
-    const sd = field.spec_definitions;
-    const unit = sd.spec_units ? sd.spec_units.abbreviation : null;
+    const sd = field.pm_spec_definitions;
+    const unit = sd.pm_spec_units ? sd.pm_spec_units.abbreviation : null;
     const label = sd.display_label || sd.name;
     const isNumeric = isNumericMatchType(sd.match_type);
     const required = field.is_required;
@@ -116,8 +114,7 @@ async function initRequestForm(productTypeId, productTypeName) {
       const customerRef = document.getElementById('customer-ref').value.trim() || null;
 
       const { data: reqData, error: reqError } = await sbClient
-        .schema('parts_matcher')
-        .from('customer_requests')
+        .from('pm_customer_requests')
         .insert({
           product_type_id: productTypeId,
           template_id: currentTemplate.id,
@@ -133,7 +130,7 @@ async function initRequestForm(productTypeId, productTypeName) {
 
       const specValues = [];
       currentFields.forEach(field => {
-        const sd = field.spec_definitions;
+        const sd = field.pm_spec_definitions;
         const input = document.getElementById(`field-${sd.id}`);
         if (!input || input.value === '') return;
         const isNumeric = isNumericMatchType(sd.match_type);
@@ -147,13 +144,11 @@ async function initRequestForm(productTypeId, productTypeName) {
 
       if (specValues.length > 0) {
         const { error: valError } = await sbClient
-          .schema('parts_matcher')
-          .from('request_spec_values')
+          .from('pm_request_spec_values')
           .insert(specValues);
         if (valError) throw valError;
       }
 
-      // Direct rpc() call — .schema() chaining not supported for RPCs
       const { data: matchData, error: matchError } = await sbClient
         .rpc('run_match', { p_request_id: requestId });
       if (matchError) throw matchError;

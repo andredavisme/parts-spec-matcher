@@ -6,10 +6,8 @@ async function initSelector() {
   const startBtn = document.getElementById('start-request-btn');
   const errorEl = document.getElementById('selector-error');
 
-  // Load categories
   const { data: categories, error: catError } = await sbClient
-    .schema('parts_matcher')
-    .from('product_categories')
+    .from('pm_product_categories')
     .select('id, name')
     .eq('is_active', true)
     .order('name');
@@ -27,18 +25,15 @@ async function initSelector() {
     categorySelect.appendChild(opt);
   });
 
-  // Category change → load product types
   categorySelect.addEventListener('change', async () => {
     const categoryId = parseInt(categorySelect.value);
     productTypeSelect.innerHTML = '<option value="">— Select a product type —</option>';
     startBtn.disabled = true;
     productTypeField.style.display = 'none';
-
     if (!categoryId) return;
 
     const { data: types, error: typeError } = await sbClient
-      .schema('parts_matcher')
-      .from('product_types')
+      .from('pm_product_types')
       .select('id, name')
       .eq('category_id', categoryId)
       .eq('is_active', true)
@@ -60,7 +55,6 @@ async function initSelector() {
     productTypeField.style.display = '';
   });
 
-  // Enable start button when product type selected
   productTypeSelect.addEventListener('change', () => {
     startBtn.disabled = !productTypeSelect.value;
   });
