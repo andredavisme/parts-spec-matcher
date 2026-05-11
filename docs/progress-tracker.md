@@ -162,23 +162,93 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
 ---
 
 ## Milestone 3 — Quote Template Builder
-**Status:** 🔲 Not Started
+**Status:** ✅ Complete  
+**Date:** 2026-05-11
 
 ### Prior Work
 Milestone 2 complete. Reference data seeded, placeholder catalog items in place for Conveyor Roller. Orphaned `vendor_item_priority` rows cleaned up.
 
 ### Dependencies
-- `spec_definitions` and `spec_units` populated for Conveyor Roller ✅
+- `spec_definitions` and `spec_units` populated for all 43 product types ✅
 - `quote_templates` and `quote_template_fields` tables created ✅
 
 ### Work Completed
-_To be filled in as work progresses._
+
+**Conveyor Roller Template (pre-existing)**
+- 1 `quote_templates` record (ID: 1, product_type_id: 1, version: 1) was already in place from earlier work
+- 8 `quote_template_fields` already linked to all Conveyor Roller spec definitions in correct sort order
+
+**Migration — All Remaining Product Types** (`parts_matcher_quote_templates_all_product_types`)
+- Inserted 42 new `quote_templates` records (IDs 2–43), one per remaining active product type
+- Populated `quote_template_fields` for all 42 new templates by selecting directly from `spec_definitions` where `product_type_id` matches
+- Fields inherit `sort_order` and `is_required` from their corresponding `spec_definitions` rows
+- `display_hint` left NULL — to be populated by DBA or admin UI in Milestone 6
+
+**Final Counts**
+- `quote_templates`: 43 (one per product type)
+- `quote_template_fields`: 228 (matches total active spec definitions exactly)
+
+| Product Type | Template Fields |
+|---|---|
+| Conveyor Roller | 8 |
+| Conveyor Pulley | 6 |
+| Deep Groove Ball Bearing | 7 |
+| Tapered Roller Bearing | 8 |
+| Pillow Block Bearing | 6 |
+| Roller Chain | 5 |
+| Engineering Class Chain | 4 |
+| Conveyor Chain | 5 |
+| Sprocket | 5 |
+| Chain Coupling | 4 |
+| Jaw Coupling | 6 |
+| Grid Coupling | 5 |
+| Disc Coupling | 5 |
+| Rigid Coupling | 5 |
+| Overrunning Clutch | 5 |
+| Torque Limiter | 4 |
+| Worm Gear Reducer | 6 |
+| Helical Gear Reducer | 6 |
+| Bevel Gear Reducer | 5 |
+| Parallel Shaft Reducer | 5 |
+| Right Angle Reducer | 5 |
+| AC Induction Motor | 8 |
+| DC Motor | 6 |
+| Variable Frequency Drive | 6 |
+| Gearmotors | 6 |
+| Linear Bearing | 5 |
+| Linear Actuator | 5 |
+| Ball Screw | 5 |
+| Linear Guide Rail | 5 |
+| Oil Seal | 5 |
+| O-Ring | 4 |
+| V-Ring Seal | 3 |
+| Mechanical Face Seal | 5 |
+| Hex Bolt | 5 |
+| Stud | 4 |
+| Set Screw | 4 |
+| Collar | 5 |
+| Retaining Ring | 4 |
+| Pneumatic Cylinder | 6 |
+| Hydraulic Cylinder | 6 |
+| Solenoid Valve | 6 |
+| Pressure Regulator | 4 |
+| Hydraulic Pump | 6 |
 
 ### Errors & Fixes
-_To be filled in as work progresses._
+None encountered.
 
 ### Next Steps → Milestone 4
-_To be defined upon Milestone 3 completion._
+- Build the `parts_matcher.run_match(p_request_id integer)` PostgreSQL function as a Supabase RPC
+- Function must:
+  1. Read `request_spec_values` for the given `customer_request_id`
+  2. Retrieve all active `catalog_items` for the same `product_type_id`
+  3. Score each catalog item against customer values using `match_type` logic per spec field:
+     - `exact` — value must match exactly (text or numeric); non-match scores 0 for that field
+     - `nearest` — numeric proximity; score inversely proportional to deviation
+     - `range` — customer value must fall within catalog item's range; binary pass/fail
+  4. Apply `vendor_item_priority` rank as a secondary sort factor
+  5. Insert scored results into `match_results` (or return them directly for preview)
+- Create a test `customer_request` for Conveyor Roller using the existing 3 placeholder catalog items to validate match logic end-to-end before writing the function
 
 ---
 
@@ -186,12 +256,12 @@ _To be defined upon Milestone 3 completion._
 **Status:** 🔲 Not Started
 
 ### Prior Work
-Milestone 3 complete. Quote templates built and testable.
+Milestone 3 complete. Quote templates built for all 43 product types. Fields match spec definitions exactly.
 
 ### Dependencies
-- Catalog items with complete spec values for at least one product type ✅
-- Vendor priority data entered for at least one product type ✅
-- Defined tolerance / matching rules per spec field type
+- Catalog items with complete spec values for at least one product type ✅ (3 Conveyor Roller items)
+- Vendor priority data entered for at least one product type ✅ (Browning rank 1, Dodge rank 2, Rexnord rank 3)
+- Defined tolerance / matching rules per spec field type (see Next Steps in Milestone 3 above)
 
 ### Work Completed
 _To be filled in as work progresses._
@@ -200,7 +270,7 @@ _To be filled in as work progresses._
 _To be filled in as work progresses._
 
 ### Next Steps → Milestone 5
-_To be defined upon Milestone 5 completion._
+_To be defined upon Milestone 4 completion._
 
 ---
 
