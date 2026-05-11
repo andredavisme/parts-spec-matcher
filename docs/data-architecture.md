@@ -39,6 +39,44 @@ Support the sales rep quote workflow.
 | `request_spec_values` | Spec values entered by the sales rep for a specific request |
 | `match_results` | Candidate catalog items returned for a request, with match score and vendor priority |
 
+## Match Engine
+
+The core matching logic is implemented as a PostgreSQL function invoked via Supabase RPC:
+
+```sql
+SELECT * FROM parts_matcher.run_match(p_request_id := 1);
+```
+
+### How It Works
+
+1. Resolves the `product_type_id` for the given `customer_request`
+2. Clears any existing `match_results` for that request (idempotent — safe to re-run)
+3. Loads all active `catalog_items` for the product type
+4. For each item, scores every customer-supplied spec field against the catalog spec value using the field's `match_type`:
+
+| match_type | Logic | Score Range |
+|---|---|---|
+| `exact` | 1.0 if values match (case-insensitive for text), 0.0 if not | 0 or 1 |
+| `nearest` | `1.0 / (1.0 + abs(customer − catalog))` — smooth inverse distance | 0 < score ≤ 1 |
+| `range` | 1.0 if `customer_value ≤ catalog_value` (customer requirement met), 0.0 if not | 0 or 1 |
+
+5. Aggregates field scores: `(sum of field scores / total fields supplied) × 100`, rounded to 2 decimal places
+6. Applies `vendor_item_priority.priority_rank` as a secondary sort (lower rank = more preferred)
+7. Writes results to `match_results` and returns them ordered by score DESC, priority_rank ASC
+
+### miss_notes
+For each catalog item, the function records a `match_notes` string listing every field that scored 0.0 (e.g., `exact:spec3=0, range:spec4=0`). This is surfaced in the frontend results view to help the sales rep understand where a candidate item falls short.
+
+### RPC Call from Frontend
+
+Called from the Supabase JS client after `request_spec_values` are inserted:
+
+```javascript
+const { data, error } = await supabase.rpc('run_match', { p_request_id: requestId });
+```
+
+The function uses `SECURITY DEFINER` so it executes with the permissions of its owner, bypassing RLS on internal reads while still requiring the caller to be authenticated.
+
 ## Vendor Priority Logic
 
 When multiple brands supply an identical or equivalent item, the system uses the `vendor_item_priority` table to rank results. Priority is set per **vendor + brand + product type** combination, and can reflect:
@@ -48,7 +86,7 @@ When multiple brands supply an identical or equivalent item, the system uses the
 - Stock availability tiers
 - Application-specific preferences (e.g., heavy duty vs. standard)
 
-Match results are returned ordered by: (1) spec match completeness, (2) vendor priority rank (ascending).
+Match results are returned ordered by: (1) spec match score (descending), (2) vendor priority rank (ascending). Score always takes precedence — a lower-priority brand will outrank a higher-priority brand if it is a better spec match.
 
 > **Schema note:** The `vendor_item_priority` table was updated in Milestone 2 (migration: `vendor_item_priority_add_brand_id`) to add `brand_id` and replace the original `UNIQUE (vendor_id, product_type_id)` constraint with `UNIQUE (vendor_id, brand_id, product_type_id)`. This allows multiple brands per vendor to be ranked independently for a given product type.
 

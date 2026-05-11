@@ -25,13 +25,16 @@ Reduce the redundant effort of researching multiple catalog sources to respond t
 
 ## Tech Stack
 
-- **Frontend:** TBD
+- **Frontend:** Vanilla HTML/CSS/JavaScript — hosted on GitHub Pages (`andredavisme/parts-spec-matcher`, `gh-pages` branch)
 - **Backend / Database:** Supabase (PostgreSQL) — schema `parts_matcher` on project `andredavisme's Project`
+- **Auth:** Supabase Auth — email/password for sales reps; JWT `app_metadata` claim for admin access
+- **Match Engine:** PostgreSQL function `parts_matcher.run_match(p_request_id)` invoked via Supabase RPC
 - **Repository:** [andredavisme/parts-spec-matcher](https://github.com/andredavisme/parts-spec-matcher)
 
 ## Documentation Index
 
 - [`docs/product-objective.md`](docs/product-objective.md) — Business problem, scope, success criteria
-- [`docs/data-architecture.md`](docs/data-architecture.md) — Schema design, catalog ingestion, vendor priority logic
+- [`docs/data-architecture.md`](docs/data-architecture.md) — Schema design, catalog ingestion, vendor priority logic, match engine
 - [`docs/quote-workflow.md`](docs/quote-workflow.md) — End-to-end quote workflow with conveyor roller example
 - [`docs/progress-tracker.md`](docs/progress-tracker.md) — Milestone log, dependencies, errors/fixes, and next steps
+- [`docs/build-guide.md`](docs/build-guide.md) — Reusable methodology reference for building with Perplexity + Supabase + GitHub
