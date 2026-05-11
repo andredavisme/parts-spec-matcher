@@ -92,7 +92,6 @@ async function initRequestForm(productTypeId, productTypeName) {
   titleEl.textContent = productTypeName;
   errorEl.classList.add('hidden');
 
-  // Show loading state while fetching template
   loadingEl.classList.remove('hidden');
   document.getElementById('request-fields').innerHTML = '';
 
@@ -107,19 +106,17 @@ async function initRequestForm(productTypeId, productTypeName) {
     loadingEl.classList.add('hidden');
   }
 
-  // Submit handler
   const form = document.getElementById('request-form');
   form.onsubmit = async (e) => {
     e.preventDefault();
     errorEl.classList.add('hidden');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Running match\u2026';
+    submitBtn.textContent = 'Running match…';
 
     try {
       const session = await getSession();
       const userEmail = session.user.email;
 
-      // Read customer meta fields
       const customerName = document.getElementById('customer-name').value.trim() || null;
       const customerRef = document.getElementById('customer-ref').value.trim() || null;
 
@@ -140,7 +137,7 @@ async function initRequestForm(productTypeId, productTypeName) {
       if (reqError) throw reqError;
       const requestId = reqData.id;
 
-      // Collect spec values from inputs
+      // Collect spec values
       const specValues = [];
       currentFields.forEach(field => {
         const sd = field.spec_definitions;
@@ -155,7 +152,6 @@ async function initRequestForm(productTypeId, productTypeName) {
         });
       });
 
-      // Insert request_spec_values
       if (specValues.length > 0) {
         const { error: valError } = await supabase
           .schema('parts_matcher')
@@ -164,13 +160,13 @@ async function initRequestForm(productTypeId, productTypeName) {
         if (valError) throw valError;
       }
 
-      // Call run_match RPC
+      // Call run_match via direct RPC (no .schema() — not supported for RPCs).
+      // GRANT EXECUTE ON FUNCTION parts_matcher.run_match TO authenticated
+      // is required and has been applied as a migration.
       const { data: matchData, error: matchError } = await supabase
-        .schema('parts_matcher')
         .rpc('run_match', { p_request_id: requestId });
       if (matchError) throw matchError;
 
-      // Pass results to results view and navigate
       window.currentRequestId = requestId;
       window.currentMatchResults = matchData;
       window.currentProductTypeName = productTypeName;
@@ -182,7 +178,7 @@ async function initRequestForm(productTypeId, productTypeName) {
       errorEl.classList.remove('hidden');
     } finally {
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Run Match \u2192';
+      submitBtn.textContent = 'Run Match →';
     }
   };
 }
