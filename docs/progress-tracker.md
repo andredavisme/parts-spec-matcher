@@ -148,7 +148,11 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
   - Dropped old unique constraint
   - Added `brand_id integer REFERENCES parts_matcher.brands(id)`
   - Added new unique constraint `(vendor_id, brand_id, product_type_id)`
-- Two orphaned rows (IDs 1–2) inserted before fix were left in place with `brand_id = NULL`; these should be cleaned up or deleted by DBA
+- Two orphaned rows (IDs 1–2) inserted before fix were left in place with `brand_id = NULL`
+
+**Cleanup — Orphaned `vendor_item_priority` rows**
+- Deleted rows where `brand_id IS NULL` via `execute_sql`
+- Confirmed: 3 clean priority rows remain (Browning rank 1, Dodge rank 2, Rexnord rank 3) all with valid `brand_id` values
 
 ### Next Steps → Milestone 3
 - Replace placeholder catalog items with real part data from brand catalogs
@@ -161,7 +165,7 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
 **Status:** 🔲 Not Started
 
 ### Prior Work
-Milestone 2 complete. Reference data seeded, placeholder catalog items in place for Conveyor Roller.
+Milestone 2 complete. Reference data seeded, placeholder catalog items in place for Conveyor Roller. Orphaned `vendor_item_priority` rows cleaned up.
 
 ### Dependencies
 - `spec_definitions` and `spec_units` populated for Conveyor Roller ✅
@@ -196,7 +200,7 @@ _To be filled in as work progresses._
 _To be filled in as work progresses._
 
 ### Next Steps → Milestone 5
-_To be defined upon Milestone 4 completion._
+_To be defined upon Milestone 5 completion._
 
 ---
 
@@ -218,7 +222,7 @@ _To be filled in as work progresses._
 _To be filled in as work progresses._
 
 ### Next Steps → Milestone 6
-_To be defined upon Milestone 5 completion._
+_To be defined upon Milestone 6 completion._
 
 ---
 
