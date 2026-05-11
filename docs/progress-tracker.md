@@ -106,7 +106,8 @@ None encountered.
 ---
 
 ## Milestone 2 — Seed Data & Catalog Entry
-**Status:** 🔲 Not Started
+**Status:** 🔄 In Progress  
+**Date:** 2026-05-11
 
 ### Prior Work
 Milestone 1 complete. All schema tables created, RLS applied, estimated reference data seeded.
@@ -117,10 +118,29 @@ Milestone 1 complete. All schema tables created, RLS applied, estimated referenc
 - Vendor relationship list from sales or purchasing team
 
 ### Work Completed
-_To be filled in as work progresses._
+
+**Vendor Seed**
+- Inserted 1 vendor: `Eastern Industrial Automation` (ID: 1) — primary distributor, source: easternia.com
+
+**Brand Seed**
+- Inserted 203 brands (IDs 1–203) sourced from easternia.com/brands, all linked to `primary_vendor_id = 1`
+- Duplicate entries from the source page (e.g. Formsprag Clutch, TB Wood's, Warner Electric, Warner Linear, Power Team, Gates Power Transmission) were deduplicated — one record kept per distinct name
+- Brand names normalized: trademark symbols (®, ™) stripped; abbreviations preserved (e.g. HAM-LET, LEESON, SKF)
+
+**Admin Screen Design Decision**
+- Admin CRUD for vendors and brands (and all reference tables) will be handled via the frontend admin screen in Milestone 6
+- Existing `parts_matcher.is_admin()` RLS helper gates all write operations — no additional DB changes needed
+- Admin screens planned: Vendors list (add/edit/deactivate), Brands list (add/edit/reassign vendor/deactivate)
 
 ### Errors & Fixes
-_To be filled in as work progresses._
+None encountered.
+
+### Next Steps (Milestone 2 continuing)
+- Add remaining product types per confirmed categories
+- Add `spec_definitions` for all remaining product types
+- Add `source_documents` entries for available catalogs
+- Begin entering `catalog_items` and `catalog_item_specs` for Conveyor Roller
+- Add `vendor_item_priority` entries once first catalog items are in place
 
 ### Next Steps → Milestone 3
 _To be defined upon Milestone 2 completion._
@@ -166,7 +186,7 @@ _To be filled in as work progresses._
 _To be filled in as work progresses._
 
 ### Next Steps → Milestone 5
-_To be defined upon Milestone 4 completion._
+_To be defined upon Milestone 5 completion._
 
 ---
 
@@ -201,6 +221,7 @@ Milestone 5 complete. Sales rep interface functional.
 ### Dependencies
 - Defined admin role and permissions in Supabase auth
 - RLS policies reviewed and applied per table
+- Admin screens to cover: Vendors, Brands, Product Categories, Product Types, Spec Definitions, Catalog Items, Vendor Item Priority
 
 ### Work Completed
 _To be filled in as work progresses._
