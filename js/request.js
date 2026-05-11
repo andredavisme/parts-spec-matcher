@@ -1,12 +1,9 @@
 // Request form view
-// Loads template fields for selected product type, renders inputs,
-// submits customer_requests + request_spec_values, calls run_match RPC.
-
-let currentTemplate = null;  // { id, product_type_id }
-let currentFields = [];       // array of field objects with spec_definition joined
+let currentTemplate = null;
+let currentFields = [];
 
 async function loadTemplate(productTypeId) {
-  const { data, error } = await supabase
+  const { data, error } = await sbClient
     .schema('parts_matcher')
     .from('quote_templates')
     .select('id, product_type_id')
@@ -20,7 +17,7 @@ async function loadTemplate(productTypeId) {
 }
 
 async function loadTemplateFields(templateId) {
-  const { data, error } = await supabase
+  const { data, error } = await sbClient
     .schema('parts_matcher')
     .from('quote_template_fields')
     .select(`
@@ -71,7 +68,7 @@ function renderRequestForm(productTypeName, fields) {
     input.type = isNumeric ? 'number' : 'text';
     input.id = `field-${sd.id}`;
     input.name = sd.name;
-    input.step = isNumeric ? 'any' : undefined;
+    if (isNumeric) input.step = 'any';
     input.placeholder = hint || '';
     input.dataset.specDefinitionId = sd.id;
     input.dataset.matchType = sd.match_type;
@@ -86,12 +83,10 @@ function renderRequestForm(productTypeName, fields) {
 async function initRequestForm(productTypeId, productTypeName) {
   const titleEl = document.getElementById('request-product-type-name');
   const errorEl = document.getElementById('request-error');
-  const submitBtn = document.getElementById('request-submit-btn');
   const loadingEl = document.getElementById('request-loading');
 
   titleEl.textContent = productTypeName;
   errorEl.classList.add('hidden');
-
   loadingEl.classList.remove('hidden');
   document.getElementById('request-fields').innerHTML = '';
 
@@ -109,6 +104,7 @@ async function initRequestForm(productTypeId, productTypeName) {
   const form = document.getElementById('request-form');
   form.onsubmit = async (e) => {
     e.preventDefault();
+    const submitBtn = document.getElementById('request-submit-btn');
     errorEl.classList.add('hidden');
     submitBtn.disabled = true;
     submitBtn.textContent = 'Running match…';
@@ -116,12 +112,10 @@ async function initRequestForm(productTypeId, productTypeName) {
     try {
       const session = await getSession();
       const userEmail = session.user.email;
-
       const customerName = document.getElementById('customer-name').value.trim() || null;
       const customerRef = document.getElementById('customer-ref').value.trim() || null;
 
-      // Insert customer_request
-      const { data: reqData, error: reqError } = await supabase
+      const { data: reqData, error: reqError } = await sbClient
         .schema('parts_matcher')
         .from('customer_requests')
         .insert({
@@ -137,7 +131,6 @@ async function initRequestForm(productTypeId, productTypeName) {
       if (reqError) throw reqError;
       const requestId = reqData.id;
 
-      // Collect spec values
       const specValues = [];
       currentFields.forEach(field => {
         const sd = field.spec_definitions;
@@ -153,17 +146,15 @@ async function initRequestForm(productTypeId, productTypeName) {
       });
 
       if (specValues.length > 0) {
-        const { error: valError } = await supabase
+        const { error: valError } = await sbClient
           .schema('parts_matcher')
           .from('request_spec_values')
           .insert(specValues);
         if (valError) throw valError;
       }
 
-      // Call run_match via direct RPC (no .schema() — not supported for RPCs).
-      // GRANT EXECUTE ON FUNCTION parts_matcher.run_match TO authenticated
-      // is required and has been applied as a migration.
-      const { data: matchData, error: matchError } = await supabase
+      // Direct rpc() call — .schema() chaining not supported for RPCs
+      const { data: matchData, error: matchError } = await sbClient
         .rpc('run_match', { p_request_id: requestId });
       if (matchError) throw matchError;
 
@@ -177,6 +168,7 @@ async function initRequestForm(productTypeId, productTypeName) {
       errorEl.textContent = 'Error: ' + err.message;
       errorEl.classList.remove('hidden');
     } finally {
+      const submitBtn = document.getElementById('request-submit-btn');
       submitBtn.disabled = false;
       submitBtn.textContent = 'Run Match →';
     }

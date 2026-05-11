@@ -17,7 +17,6 @@ function setUserEmailAll(email) {
 }
 
 async function init() {
-  // Check existing session
   const session = await getSession();
   if (session) {
     setUserEmailAll(session.user.email);
@@ -27,7 +26,7 @@ async function init() {
     showView('view-login');
   }
 
-  // ===== LOGIN =====
+  // Login
   const loginForm = document.getElementById('login-form');
   const loginBtn = document.getElementById('login-btn');
   const loginError = document.getElementById('login-error');
@@ -36,7 +35,7 @@ async function init() {
     e.preventDefault();
     loginError.classList.add('hidden');
     loginBtn.disabled = true;
-    loginBtn.textContent = 'Signing in\u2026';
+    loginBtn.textContent = 'Signing in…';
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
     try {
@@ -53,7 +52,7 @@ async function init() {
     }
   });
 
-  // ===== LOGOUT (all views) =====
+  // Logout (all views)
   ['logout-btn', 'logout-btn-request', 'logout-btn-results'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.addEventListener('click', async () => {
@@ -62,7 +61,7 @@ async function init() {
     });
   });
 
-  // ===== SELECTOR → REQUEST =====
+  // Selector → Request
   document.getElementById('start-request-btn').addEventListener('click', async () => {
     const select = document.getElementById('product-type-select');
     const productTypeId = parseInt(select.value);
@@ -72,12 +71,12 @@ async function init() {
     await initRequestForm(productTypeId, productTypeName);
   });
 
-  // ===== BACK: REQUEST → SELECTOR =====
+  // Back: Request → Selector
   document.getElementById('request-back-btn').addEventListener('click', () => {
     showView('view-selector');
   });
 
-  // ===== BACK: RESULTS → SELECTOR =====
+  // Back: Results → Selector
   document.getElementById('results-back-btn').addEventListener('click', () => {
     showView('view-selector');
   });
