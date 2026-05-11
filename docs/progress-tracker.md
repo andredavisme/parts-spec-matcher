@@ -253,7 +253,8 @@ None encountered.
 ---
 
 ## Milestone 4 — Match Query Engine
-**Status:** 🔲 Not Started
+**Status:** ✅ Complete  
+**Date:** 2026-05-11
 
 ### Prior Work
 Milestone 3 complete. Quote templates built for all 43 product types. Fields match spec definitions exactly.
@@ -261,16 +262,73 @@ Milestone 3 complete. Quote templates built for all 43 product types. Fields mat
 ### Dependencies
 - Catalog items with complete spec values for at least one product type ✅ (3 Conveyor Roller items)
 - Vendor priority data entered for at least one product type ✅ (Browning rank 1, Dodge rank 2, Rexnord rank 3)
-- Defined tolerance / matching rules per spec field type (see Next Steps in Milestone 3 above)
+- Defined tolerance / matching rules per spec field type ✅
 
 ### Work Completed
-_To be filled in as work progresses._
+
+**Test Customer Request**
+- Inserted 1 `customer_requests` record (ID: 1): product_type_id=1, template_id=1, customer_name="Test Customer", ref="TEST-001"
+- Inserted 8 `request_spec_values` (IDs 1–8) covering all Conveyor Roller spec fields:
+
+| Spec | match_type | Customer Value | Design Intent |
+|---|---|---|---|
+| roller_diameter | nearest | 2.4" | Nearest to Dodge (2.5") |
+| roller_length | nearest | 34" | Nearest to Dodge (36") |
+| shaft_diameter | exact | 0.75" | Exact match: Dodge only |
+| load_rating | range | 450 lbs | Passes Dodge (500) + Rexnord (1200); fails Browning (250) |
+| max_speed | range | 450 RPM | Passes Browning (600) + Dodge (500); fails Rexnord (350) |
+| material | exact | Steel | All 3 match |
+| bearing_type | exact | Ball Bearing | Browning + Dodge match; Rexnord (Tapered) does not |
+| finish | exact | Galvanized | Dodge only |
+
+**Scoring Logic**
+- Each spec field contributes equally (weight = 1.0)
+- `exact` → 1.0 if match, 0.0 if not (case-insensitive for text)
+- `nearest` → `1.0 / (1.0 + abs(customer_value - catalog_value))` — smooth proximity, always > 0
+- `range` → 1.0 if `customer_value <= catalog_value`, else 0.0
+- Final score = `(sum of field scores / total customer-supplied fields) * 100`, rounded to 2 decimal places
+- Secondary sort: `vendor_item_priority.priority_rank` ASC
+- Missing catalog spec values are excluded (NULL field_score) and do not penalize the item
+
+**Migrations Applied**
+- `parts_matcher_run_match_function` — initial attempt; failed on ambiguous column name in RETURNS TABLE
+- `parts_matcher_run_match_function_v2` — failed; `CREATE OR REPLACE` blocked because return type changed
+- `parts_matcher_run_match_function_v2_drop_recreate` — `DROP FUNCTION` then `CREATE FUNCTION` with unambiguous `out_` prefixed return column names; succeeded ✅
+
+**Test Results — `SELECT * FROM parts_matcher.run_match(1)`**
+
+| Rank | Brand | Part Number | Score | Vendor Priority | Misses |
+|---|---|---|---|---|---|
+| 1 | Dodge | DGE-CR-250-36-0750 | 90.53 | 2 | None |
+| 2 | Browning | BRW-CR-190-24-0500 | 46.97 | 1 | shaft_dia(exact), load_rating(range), finish(exact) |
+| 3 | Rexnord | RXN-CR-350-48-1000 | 31.79 | 3 | shaft_dia(exact), max_speed(range), bearing_type(exact), finish(exact) |
+
+**Validation**
+- Dodge ranks #1 at 90.53 despite vendor priority rank 2 — confirms score overrides vendor rank ✅
+- Browning ranks #2 with correct miss notes ✅
+- Rexnord ranks last with correct miss notes ✅
+- Results written to `match_results` table ✅
+- Re-running `run_match` clears and rewrites `match_results` for the request (idempotent) ✅
 
 ### Errors & Fixes
-_To be filled in as work progresses._
+
+**Ambiguous column reference in RETURNS TABLE**
+- First function version used `catalog_item_id` as both a RETURNS TABLE output column name and a CTE alias — PostgreSQL raised `42702: column reference is ambiguous`
+- **Fix:** Prefixed all RETURNS TABLE column names with `out_` and all CTE-internal aliases with short disambiguating prefixes (`cs_`, `sd_`, `p_`, `r_`)
+
+**Cannot change return type of existing function**
+- `CREATE OR REPLACE` blocked because the return signature changed
+- **Fix:** Used `DROP FUNCTION IF EXISTS parts_matcher.run_match(integer)` before `CREATE FUNCTION` in the same migration
 
 ### Next Steps → Milestone 5
-_To be defined upon Milestone 4 completion._
+- Decide frontend stack (framework, hosting) — React/Next.js + Vercel recommended
+- Scaffold the frontend project
+- Implement the Sales Rep interface with three views:
+  1. **Product Type Selector** — dropdown of active product types
+  2. **Request Form** — spec fields drawn from `quote_template_fields` for the selected product type; submit creates `customer_requests` + `request_spec_values` and calls `run_match`
+  3. **Match Results View** — ranked list from `match_results` showing brand, part number, score, vendor priority, and miss notes
+- Integrate Supabase client using the project's publishable key
+- Auth strategy: Supabase email/password auth for sales rep login; JWT claim `parts_matcher_role: admin` for DBA access (already implemented in RLS)
 
 ---
 
@@ -278,11 +336,11 @@ _To be defined upon Milestone 4 completion._
 **Status:** 🔲 Not Started
 
 ### Prior Work
-Milestone 4 complete. Match engine functional and tested.
+Milestone 4 complete. Match engine functional and validated end-to-end.
 
 ### Dependencies
 - Frontend stack decision (framework, hosting)
-- Supabase anon/publishable key for client queries
+- Supabase publishable key for client queries
 - Auth strategy for sales rep login
 
 ### Work Completed
@@ -292,7 +350,7 @@ _To be filled in as work progresses._
 _To be filled in as work progresses._
 
 ### Next Steps → Milestone 6
-_To be defined upon Milestone 6 completion._
+_To be defined upon Milestone 5 completion._
 
 ---
 
