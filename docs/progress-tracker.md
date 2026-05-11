@@ -244,7 +244,7 @@ Milestone 3 complete. Quote templates built for all 43 product types. Fields mat
 ---
 
 ## Milestone 5 — Frontend Interface
-**Status:** 🔄 In Progress  
+**Status:** ✅ Complete  
 **Date:** 2026-05-11
 
 ### Prior Work
@@ -254,7 +254,8 @@ Milestone 4 complete. Match engine functional and validated end-to-end.
 - Frontend stack: Vanilla HTML/CSS/JS hosted on GitHub Pages (`gh-pages` branch) ✅
 - Supabase anon key for client queries ✅
 - Auth strategy: Supabase email/password for sales reps ✅
-- RLS: `authenticated_read` policies confirmed on `product_categories` and `product_types` ✅
+- RLS: `authenticated_read` policies confirmed on all relevant tables ✅
+- `GRANT EXECUTE ON FUNCTION parts_matcher.run_match TO authenticated` applied ✅
 
 ### Work Completed
 
@@ -268,16 +269,35 @@ Milestone 4 complete. Match engine functional and validated end-to-end.
   - `js/selector.js` — loads `product_categories` → `product_types` cascade; enables Start Request button
   - `js/app.js` — view routing, session restore on load, login form submit, logout
 - Session-aware: existing session bypasses login and goes straight to selector
-- `Start Request →` button is disabled until a product type is selected; stores `window.selectedProductTypeId` for the next view
+
+**Step 2 — Request Form + Results View**
+- Updated `index.html` to include all 4 views: `#view-login`, `#view-selector`, `#view-request`, `#view-results`
+- Added `js/request.js`:
+  - Loads the active `quote_template` for the selected `product_type_id`
+  - Fetches `quote_template_fields` joined to `spec_definitions` and `spec_units`
+  - Renders dynamic input fields (`number` for `nearest`/`range` match types; `text` for `exact`)
+  - On submit: inserts `customer_requests`, inserts `request_spec_values`, calls `run_match` RPC, navigates to results
+- Added `js/results.js`:
+  - Renders ranked match results table: Brand, Part Number, Score (with visual bar), Vendor Priority, Miss Notes
+- Updated `css/styles.css` with styles for request form, meta fields grid, results table, and score bars
+- Updated `js/app.js` with full 4-view navigation: login → selector → request → results, plus back navigation
+
+**GitHub Pages Hosting**
+- Branch named `gh-pages` — GitHub auto-enables Pages for this branch name without manual configuration
+- App served at: https://andredavisme.github.io/parts-spec-matcher/
 
 ### Errors & Fixes
-_To be filled in as work progresses._
 
-### Next Steps — Milestone 5 (continued)
-- Enable GitHub Pages on the `gh-pages` branch in repo settings (manual step — requires repo owner)
-- Build `#view-request` — dynamic spec input form drawn from `quote_template_fields`; creates `customer_requests` + `request_spec_values` rows and calls `run_match` RPC
-- Build `#view-results` — ranked match results table from `match_results` showing brand, part number, score, vendor priority, and miss notes
-- Wire `Start Request →` button to navigate to `#view-request`
+**RPC schema qualification not supported**
+- Initial implementation used `.schema('parts_matcher').rpc('run_match', ...)` — this pattern is not supported by the Supabase JS v2 client. `.schema()` chaining only works for table queries, not RPC calls.
+- **Fix:** Changed to `supabase.rpc('run_match', { p_request_id: requestId })` directly on the client.
+- **Supporting fix:** Applied migration `grant_run_match_to_authenticated` — `GRANT EXECUTE ON FUNCTION parts_matcher.run_match(integer) TO authenticated`. This is required because `run_match` lives in a non-public schema; granting execute to `authenticated` makes it callable via the PostgREST API with a valid JWT.
+- **Pattern note added to `docs/build-guide.md`** — the Supabase JS client always calls RPC via the root client regardless of function schema. For non-public schema functions: use `SECURITY DEFINER`, set an explicit `search_path`, and `GRANT EXECUTE` to the appropriate role.
+
+### Next Steps → Milestone 6
+- Create a test sales rep user in Supabase Authentication → Users
+- Load https://andredavisme.github.io/parts-spec-matcher/ and validate the full end-to-end flow: login → selector → Conveyor Roller request form → run match → results
+- Begin Milestone 6: Admin / DBA Tooling
 
 ---
 
@@ -285,7 +305,7 @@ _To be filled in as work progresses._
 **Status:** 🔲 Not Started
 
 ### Prior Work
-Milestone 5 complete. Sales rep interface functional.
+Milestone 5 complete. Sales rep interface functional end-to-end.
 
 ### Dependencies
 - Defined admin role and permissions in Supabase auth
