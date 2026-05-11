@@ -138,6 +138,55 @@ From a well-formed setup prompt, Perplexity will:
 
 ---
 
+## Migration Conventions
+
+Database schema changes are applied via Supabase's `apply_migration` tool, which tracks each migration by name in the `supabase_migrations` table. The following conventions are used on this project:
+
+- **Naming:** `snake_case`, descriptive of the scope — e.g., `create_parts_matcher_schema_and_reference_tables`
+- **Grouping:** Related tables are batched into a single migration (e.g., all reference tables together, all workflow tables together)
+- **Separation of concerns:** DDL (schema creation) is always a separate migration from RLS policies. This makes it easier to re-apply or audit security changes independently.
+- **Seed data:** Initial seed data is applied via `execute_sql` (not `apply_migration`) since it is not structural DDL and may be updated by administrators over time
+- **Idempotency:** All seed inserts use `ON CONFLICT DO NOTHING` so they can be safely re-run
+- **Audit columns:** Every mutable table includes `created_at`, `updated_at`, and `created_by` columns
+- **Soft deletes:** Reference and catalog tables use an `is_active boolean` flag rather than hard deletes to preserve relational integrity
+
+---
+
+## Admin Access Pattern
+
+This project uses a **JWT app_metadata claim** to control administrator write access, rather than a separate Supabase role or a dedicated admin table. This pattern works well for internal tools on a shared Supabase project where creating custom database roles is impractical.
+
+### How It Works
+
+1. A helper function `parts_matcher.is_admin()` reads the authenticated user's JWT:
+   ```sql
+   SELECT coalesce(
+     (auth.jwt() -> 'app_metadata' ->> 'parts_matcher_role') = 'admin',
+     false
+   );
+   ```
+2. RLS policies on all reference and catalog tables use this function in their `USING` and `WITH CHECK` clauses
+3. Standard `authenticated` users get read-only access; only users with the claim get write access
+
+### Granting Admin Access
+
+In the Supabase dashboard:
+1. Go to **Authentication → Users**
+2. Select the user
+3. Edit **App Metadata** and add:
+   ```json
+   { "parts_matcher_role": "admin" }
+   ```
+4. The user's next authenticated request will carry the updated claim
+
+### Why This Approach
+- No custom PostgreSQL roles needed
+- Claim is project-namespaced (`parts_matcher_role`) so it does not conflict with claims used by other schemas on the same Supabase instance
+- Revocable instantly by removing the claim from app_metadata
+- Reusable pattern: any future schema on this instance can define its own namespaced claim
+
+---
+
 ## Milestone Structure Reference
 
 Every milestone in `docs/progress-tracker.md` follows this structure:
