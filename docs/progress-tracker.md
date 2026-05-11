@@ -33,9 +33,8 @@ None. This is the starting point.
 
 ### Next Steps → Milestone 1
 - Create the `parts_matcher` schema in Supabase
-- Apply DDL migrations for all reference/lookup tables: `vendors`, `brands`, `product_categories`, `product_types`, `spec_definitions`, `spec_units`
-- Apply DDL migrations for catalog tables: `catalog_items`, `catalog_item_specs`, `vendor_item_priority`, `source_documents`
-- Apply DDL migrations for workflow tables: `quote_templates`, `quote_template_fields`, `customer_requests`, `request_spec_values`, `match_results`
+- Apply DDL migrations for all reference/lookup tables
+- Apply DDL migrations for catalog and workflow tables
 - Run security and performance advisors after schema creation
 - Confirm product category list with DBA against actual Easternia catalog
 
@@ -46,11 +45,11 @@ None. This is the starting point.
 **Date:** 2026-05-11
 
 ### Prior Work
-Milestone 0 complete. Documentation in place. Repository initialized. Decision made to proceed with estimated product categories (DBA to confirm/update via admin path in future milestone).
+Milestone 0 complete. Documentation in place. Repository initialized.
 
 ### Dependencies
 - Access to Supabase project `hhyhulqngdkwsxhymmcd`
-- DBA review deferred — estimated categories accepted as starting point with admin update path built in
+- DBA review deferred — estimated categories accepted as starting point
 
 ### Work Completed
 
@@ -62,46 +61,20 @@ Milestone 0 complete. Documentation in place. Repository initialized. Decision m
 
 **Migration 2 — Catalog Tables** (`create_parts_matcher_catalog_tables`)
 - Created tables: `source_documents`, `catalog_items`, `catalog_item_specs`, `vendor_item_priority`
-- `source_documents.source_type` CHECK constraint: `pdf`, `url`, `manual`, `csv`
-- All catalog tables enforce FK relationships to reference tables
 
 **Migration 3 — Workflow Tables** (`create_parts_matcher_workflow_tables`)
 - Created tables: `quote_templates`, `quote_template_fields`, `customer_requests`, `request_spec_values`, `match_results`
-- `customer_requests.status` CHECK constraint: `open`, `matched`, `quoted`, `closed`
-- All UNIQUE constraints in place to prevent duplicate template fields and request spec entries
 
 **Seed Data** (via `execute_sql`)
-- Seeded 12 `spec_units`: inches, millimeters, pounds, kilograms, RPM, PSI, Nm, °F, °C, HP, kW, none
-- Seeded 10 estimated `product_categories`: Conveyor Components, Bearings, Chain & Sprockets, Couplings & Clutches, Gearboxes & Speed Reducers, Motors & Drives, Linear Motion, Seals & Gaskets, Fasteners & Hardware, Pneumatics & Hydraulics
-- Seeded 5 `product_types`: Conveyor Roller, Conveyor Pulley (Conveyor Components); Deep Groove Ball Bearing, Tapered Roller Bearing, Pillow Block Bearing (Bearings)
-- Seeded 8 `spec_definitions` for Conveyor Roller: roller_diameter, roller_length, shaft_diameter, load_rating, max_speed, material, bearing_type, finish
-- Seeded 7 `spec_definitions` for Deep Groove Ball Bearing: bore_diameter, outer_diameter, width, dynamic_load, static_load, max_speed, seal_type
+- Seeded 12 `spec_units`, 10 `product_categories`, 5 `product_types`, and spec definitions for Conveyor Roller and Deep Groove Ball Bearing
 
 **Migration 4 — RLS + Admin Policies** (`parts_matcher_rls_and_admin_policies`)
-- Enabled RLS on all 15 `parts_matcher` tables
-- All reference and catalog tables: SELECT granted to `authenticated` role
-- Workflow tables (`customer_requests`, `request_spec_values`): full CRUD for `authenticated`
-- `match_results`: SELECT + INSERT for `authenticated`
-- Admin write access on all tables controlled by JWT `app_metadata` claim: `{ "parts_matcher_role": "admin" }`
-- Created `parts_matcher.is_admin()` helper function (SECURITY DEFINER, fixed search_path)
-- Admin policies applied to all 12 reference + catalog tables for INSERT/UPDATE/DELETE
-
-**Security Advisor Review**
-- Ran Supabase security advisor post-migration
-- No findings in `parts_matcher` schema — all clear
-- Pre-existing findings in other schemas (`client_lawnscaping`, `public`, `player`, etc.) are out of scope for this project
+- Enabled RLS on all 15 tables; admin write access gated by JWT `app_metadata` claim `parts_matcher_role: admin`
+- Created `parts_matcher.is_admin()` helper function
+- Security advisor: no findings in `parts_matcher` schema
 
 ### Errors & Fixes
-None encountered.
-
-### Next Steps → Milestone 2
-- DBA confirms or updates product category list (can now do so via admin API path — set `parts_matcher_role: admin` in Supabase Auth app_metadata for the DBA user)
-- Add remaining product types per confirmed categories
-- Add `spec_definitions` for all product types (starting with Conveyor Roller and Deep Groove Ball Bearing — already seeded)
-- Add at least one `vendor` and one `brand` record
-- Add `source_documents` entries for available catalogs (PDF or URL)
-- Begin entering `catalog_items` and `catalog_item_specs` for the Conveyor Roller product type as the first end-to-end test case
-- Add `vendor_item_priority` entries once first vendor/brand/product combination is in place
+None.
 
 ---
 
@@ -110,12 +83,12 @@ None encountered.
 **Date:** 2026-05-11
 
 ### Prior Work
-Milestone 1 complete. All schema tables created, RLS applied, estimated reference data seeded.
+Milestone 1 complete. All schema tables created, RLS applied, initial reference data seeded.
 
 ### Dependencies
-- DBA access to Supabase (service role or admin JWT claim set)
-- Source catalogs (PDF or web) for at least one brand per product category
-- Vendor relationship list from sales or purchasing team
+- DBA access to Supabase
+- Source catalogs for at least one brand per product category
+- Vendor relationship list
 
 ### Work Completed
 
@@ -124,22 +97,41 @@ Milestone 1 complete. All schema tables created, RLS applied, estimated referenc
 
 **Brand Seed**
 - Inserted 203 brands (IDs 1–203) sourced from easternia.com/brands, all linked to `primary_vendor_id = 1`
-- Duplicate entries from the source page (e.g. Formsprag Clutch, TB Wood's, Warner Electric, Warner Linear, Power Team, Gates Power Transmission) were deduplicated — one record kept per distinct name
-- Brand names normalized: trademark symbols (®, ™) stripped; abbreviations preserved (e.g. HAM-LET, LEESON, SKF)
+- Duplicate entries deduplicated; trademark symbols (®, ™) stripped from names
 
-**Admin Screen Design Decision**
-- Admin CRUD for vendors and brands (and all reference tables) will be handled via the frontend admin screen in Milestone 6
+**Product Types — Full Expansion**
+- Added 38 new product types across all 8 previously empty categories (IDs 6–43)
+- All 10 categories now have at least 4–5 product types
+- Final product type count: 43 across 10 categories
+
+| Category | Product Types Added |
+|---|---|
+| Chain & Sprockets | Roller Chain, Engineering Class Chain, Conveyor Chain, Sprocket, Chain Coupling |
+| Couplings & Clutches | Jaw Coupling, Grid Coupling, Disc Coupling, Rigid Coupling, Overrunning Clutch, Torque Limiter |
+| Gearboxes & Speed Reducers | Worm Gear Reducer, Helical Gear Reducer, Bevel Gear Reducer, Parallel Shaft Reducer, Right Angle Reducer |
+| Motors & Drives | AC Induction Motor, DC Motor, Variable Frequency Drive, Gearmotors |
+| Linear Motion | Linear Bearing, Linear Actuator, Ball Screw, Linear Guide Rail |
+| Seals & Gaskets | Oil Seal, O-Ring, V-Ring Seal, Mechanical Face Seal |
+| Fasteners & Hardware | Hex Bolt, Stud, Set Screw, Collar, Retaining Ring |
+| Pneumatics & Hydraulics | Pneumatic Cylinder, Hydraulic Cylinder, Solenoid Valve, Pressure Regulator, Hydraulic Pump |
+
+**Spec Definitions — Full Coverage**
+- Added spec definitions for all product types previously missing them: Conveyor Pulley, Tapered Roller Bearing, Pillow Block Bearing, and all 38 new types
+- All 43 product types now have spec definitions (IDs 1–228 total)
+- Each product type has 3–8 spec fields; required fields marked with `is_required = true`
+- Match types assigned per field: `exact`, `range`, or `nearest` per industrial convention
+
+**Admin Screen & CSV Upload Design Decisions**
+- Admin CRUD for all reference tables (vendors, brands, product types, spec definitions, catalog items, vendor priority) handled via frontend admin screen in Milestone 6
 - Existing `parts_matcher.is_admin()` RLS helper gates all write operations — no additional DB changes needed
-- Admin screens planned: Vendors list (add/edit/deactivate), Brands list (add/edit/reassign vendor/deactivate)
+- **CSV bulk upload templates** will be made available in the admin screen for all reference and catalog tables, enabling DBA to update data via file upload without developer intervention (see `docs/data-architecture.md` for table schemas)
 
 ### Errors & Fixes
 None encountered.
 
-### Next Steps (Milestone 2 continuing)
-- Add remaining product types per confirmed categories
-- Add `spec_definitions` for all remaining product types
-- Add `source_documents` entries for available catalogs
-- Begin entering `catalog_items` and `catalog_item_specs` for Conveyor Roller
+### Remaining Work (Milestone 2)
+- Add `source_documents` entries for available catalogs (PDF or URL)
+- Enter `catalog_items` and `catalog_item_specs` for Conveyor Roller (first end-to-end test)
 - Add `vendor_item_priority` entries once first catalog items are in place
 
 ### Next Steps → Milestone 3
@@ -177,7 +169,7 @@ Milestone 3 complete. Quote templates built and testable.
 ### Dependencies
 - Catalog items with complete spec values for at least one product type
 - Vendor priority data entered for at least one product type
-- Defined tolerance / matching rules per spec field type (exact, range, nearest)
+- Defined tolerance / matching rules per spec field type
 
 ### Work Completed
 _To be filled in as work progresses._
@@ -186,7 +178,7 @@ _To be filled in as work progresses._
 _To be filled in as work progresses._
 
 ### Next Steps → Milestone 5
-_To be defined upon Milestone 5 completion._
+_To be defined upon Milestone 4 completion._
 
 ---
 
@@ -222,6 +214,7 @@ Milestone 5 complete. Sales rep interface functional.
 - Defined admin role and permissions in Supabase auth
 - RLS policies reviewed and applied per table
 - Admin screens to cover: Vendors, Brands, Product Categories, Product Types, Spec Definitions, Catalog Items, Vendor Item Priority
+- CSV bulk upload templates for all reference and catalog tables
 
 ### Work Completed
 _To be filled in as work progresses._

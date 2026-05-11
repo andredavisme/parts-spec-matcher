@@ -65,4 +65,21 @@ Initial data will be entered manually by the DBA from:
 - Public-facing brand web catalogs
 - Vendor price sheets
 
-Future consideration: structured import templates (CSV) for bulk catalog entry.
+## Admin Data Management
+
+All reference and catalog tables support two update paths available to admin users:
+
+### 1. Admin UI (Milestone 6)
+The frontend admin screen will provide form-based add/edit/deactivate for all reference tables:
+- Vendors, Brands, Product Categories, Product Types, Spec Definitions, Spec Units
+- Catalog Items, Catalog Item Specs, Vendor Item Priority, Source Documents
+
+All write operations are gated by `parts_matcher.is_admin()` RLS helper, which checks the JWT `app_metadata` claim `{ "parts_matcher_role": "admin" }`.
+
+### 2. CSV Bulk Upload (Milestone 6)
+The admin screen will provide downloadable CSV templates for each table. The DBA can populate a template and upload it to batch-insert or batch-update records. This is the recommended path for:
+- Initial catalog item entry from brand PDF/web catalogs
+- Bulk spec value updates
+- Vendor priority table setup across many product types
+
+CSV templates will be generated from the live schema and include column headers, data type hints, and example rows. Uploaded CSVs will be validated against the schema before insert.
