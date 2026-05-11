@@ -188,67 +188,11 @@ Milestone 2 complete. Reference data seeded, placeholder catalog items in place 
 - `quote_templates`: 43 (one per product type)
 - `quote_template_fields`: 228 (matches total active spec definitions exactly)
 
-| Product Type | Template Fields |
-|---|---|
-| Conveyor Roller | 8 |
-| Conveyor Pulley | 6 |
-| Deep Groove Ball Bearing | 7 |
-| Tapered Roller Bearing | 8 |
-| Pillow Block Bearing | 6 |
-| Roller Chain | 5 |
-| Engineering Class Chain | 4 |
-| Conveyor Chain | 5 |
-| Sprocket | 5 |
-| Chain Coupling | 4 |
-| Jaw Coupling | 6 |
-| Grid Coupling | 5 |
-| Disc Coupling | 5 |
-| Rigid Coupling | 5 |
-| Overrunning Clutch | 5 |
-| Torque Limiter | 4 |
-| Worm Gear Reducer | 6 |
-| Helical Gear Reducer | 6 |
-| Bevel Gear Reducer | 5 |
-| Parallel Shaft Reducer | 5 |
-| Right Angle Reducer | 5 |
-| AC Induction Motor | 8 |
-| DC Motor | 6 |
-| Variable Frequency Drive | 6 |
-| Gearmotors | 6 |
-| Linear Bearing | 5 |
-| Linear Actuator | 5 |
-| Ball Screw | 5 |
-| Linear Guide Rail | 5 |
-| Oil Seal | 5 |
-| O-Ring | 4 |
-| V-Ring Seal | 3 |
-| Mechanical Face Seal | 5 |
-| Hex Bolt | 5 |
-| Stud | 4 |
-| Set Screw | 4 |
-| Collar | 5 |
-| Retaining Ring | 4 |
-| Pneumatic Cylinder | 6 |
-| Hydraulic Cylinder | 6 |
-| Solenoid Valve | 6 |
-| Pressure Regulator | 4 |
-| Hydraulic Pump | 6 |
-
 ### Errors & Fixes
 None encountered.
 
 ### Next Steps → Milestone 4
 - Build the `parts_matcher.run_match(p_request_id integer)` PostgreSQL function as a Supabase RPC
-- Function must:
-  1. Read `request_spec_values` for the given `customer_request_id`
-  2. Retrieve all active `catalog_items` for the same `product_type_id`
-  3. Score each catalog item against customer values using `match_type` logic per spec field:
-     - `exact` — value must match exactly (text or numeric); non-match scores 0 for that field
-     - `nearest` — numeric proximity; score inversely proportional to deviation
-     - `range` — customer value must fall within catalog item's range; binary pass/fail
-  4. Apply `vendor_item_priority` rank as a secondary sort factor
-  5. Insert scored results into `match_results` (or return them directly for preview)
-- Create a test `customer_request` for Conveyor Roller using the existing 3 placeholder catalog items to validate match logic end-to-end before writing the function
 
 ---
 
@@ -268,89 +212,72 @@ Milestone 3 complete. Quote templates built for all 43 product types. Fields mat
 
 **Test Customer Request**
 - Inserted 1 `customer_requests` record (ID: 1): product_type_id=1, template_id=1, customer_name="Test Customer", ref="TEST-001"
-- Inserted 8 `request_spec_values` (IDs 1–8) covering all Conveyor Roller spec fields:
-
-| Spec | match_type | Customer Value | Design Intent |
-|---|---|---|---|
-| roller_diameter | nearest | 2.4" | Nearest to Dodge (2.5") |
-| roller_length | nearest | 34" | Nearest to Dodge (36") |
-| shaft_diameter | exact | 0.75" | Exact match: Dodge only |
-| load_rating | range | 450 lbs | Passes Dodge (500) + Rexnord (1200); fails Browning (250) |
-| max_speed | range | 450 RPM | Passes Browning (600) + Dodge (500); fails Rexnord (350) |
-| material | exact | Steel | All 3 match |
-| bearing_type | exact | Ball Bearing | Browning + Dodge match; Rexnord (Tapered) does not |
-| finish | exact | Galvanized | Dodge only |
+- Inserted 8 `request_spec_values` (IDs 1–8) covering all Conveyor Roller spec fields
 
 **Scoring Logic**
-- Each spec field contributes equally (weight = 1.0)
 - `exact` → 1.0 if match, 0.0 if not (case-insensitive for text)
-- `nearest` → `1.0 / (1.0 + abs(customer_value - catalog_value))` — smooth proximity, always > 0
+- `nearest` → `1.0 / (1.0 + abs(customer_value - catalog_value))`
 - `range` → 1.0 if `customer_value <= catalog_value`, else 0.0
-- Final score = `(sum of field scores / total customer-supplied fields) * 100`, rounded to 2 decimal places
+- Final score = `(sum of field scores / total customer-supplied fields) * 100`
 - Secondary sort: `vendor_item_priority.priority_rank` ASC
-- Missing catalog spec values are excluded (NULL field_score) and do not penalize the item
-
-**Migrations Applied**
-- `parts_matcher_run_match_function` — initial attempt; failed on ambiguous column name in RETURNS TABLE
-- `parts_matcher_run_match_function_v2` — failed; `CREATE OR REPLACE` blocked because return type changed
-- `parts_matcher_run_match_function_v2_drop_recreate` — `DROP FUNCTION` then `CREATE FUNCTION` with unambiguous `out_` prefixed return column names; succeeded ✅
 
 **Test Results — `SELECT * FROM parts_matcher.run_match(1)`**
 
-| Rank | Brand | Part Number | Score | Vendor Priority | Misses |
-|---|---|---|---|---|---|
-| 1 | Dodge | DGE-CR-250-36-0750 | 90.53 | 2 | None |
-| 2 | Browning | BRW-CR-190-24-0500 | 46.97 | 1 | shaft_dia(exact), load_rating(range), finish(exact) |
-| 3 | Rexnord | RXN-CR-350-48-1000 | 31.79 | 3 | shaft_dia(exact), max_speed(range), bearing_type(exact), finish(exact) |
+| Rank | Brand | Part Number | Score | Vendor Priority |
+|---|---|---|---|---|
+| 1 | Dodge | DGE-CR-250-36-0750 | 90.53 | 2 |
+| 2 | Browning | BRW-CR-190-24-0500 | 46.97 | 1 |
+| 3 | Rexnord | RXN-CR-350-48-1000 | 31.79 | 3 |
 
-**Validation**
-- Dodge ranks #1 at 90.53 despite vendor priority rank 2 — confirms score overrides vendor rank ✅
-- Browning ranks #2 with correct miss notes ✅
-- Rexnord ranks last with correct miss notes ✅
-- Results written to `match_results` table ✅
-- Re-running `run_match` clears and rewrites `match_results` for the request (idempotent) ✅
+**Migrations Applied**
+- `parts_matcher_run_match_function_v2_drop_recreate` — final working version ✅
 
 ### Errors & Fixes
 
-**Ambiguous column reference in RETURNS TABLE**
-- First function version used `catalog_item_id` as both a RETURNS TABLE output column name and a CTE alias — PostgreSQL raised `42702: column reference is ambiguous`
-- **Fix:** Prefixed all RETURNS TABLE column names with `out_` and all CTE-internal aliases with short disambiguating prefixes (`cs_`, `sd_`, `p_`, `r_`)
-
-**Cannot change return type of existing function**
-- `CREATE OR REPLACE` blocked because the return signature changed
-- **Fix:** Used `DROP FUNCTION IF EXISTS parts_matcher.run_match(integer)` before `CREATE FUNCTION` in the same migration
+**Ambiguous column reference in RETURNS TABLE** — Fixed by prefixing all output columns with `out_`  
+**Cannot change return type of existing function** — Fixed by `DROP FUNCTION IF EXISTS` before `CREATE FUNCTION`
 
 ### Next Steps → Milestone 5
-- Decide frontend stack (framework, hosting) — React/Next.js + Vercel recommended
-- Scaffold the frontend project
-- Implement the Sales Rep interface with three views:
-  1. **Product Type Selector** — dropdown of active product types
-  2. **Request Form** — spec fields drawn from `quote_template_fields` for the selected product type; submit creates `customer_requests` + `request_spec_values` and calls `run_match`
-  3. **Match Results View** — ranked list from `match_results` showing brand, part number, score, vendor priority, and miss notes
-- Integrate Supabase client using the project's publishable key
-- Auth strategy: Supabase email/password auth for sales rep login; JWT claim `parts_matcher_role: admin` for DBA access (already implemented in RLS)
+- Scaffold Vanilla JS frontend on `gh-pages` branch
+- Implement login view, product type selector, request form, and match results view
 
 ---
 
 ## Milestone 5 — Frontend Interface
-**Status:** 🔲 Not Started
+**Status:** 🔄 In Progress  
+**Date:** 2026-05-11
 
 ### Prior Work
 Milestone 4 complete. Match engine functional and validated end-to-end.
 
 ### Dependencies
-- Frontend stack decision (framework, hosting)
-- Supabase publishable key for client queries
-- Auth strategy for sales rep login
+- Frontend stack: Vanilla HTML/CSS/JS hosted on GitHub Pages (`gh-pages` branch) ✅
+- Supabase anon key for client queries ✅
+- Auth strategy: Supabase email/password for sales reps ✅
+- RLS: `authenticated_read` policies confirmed on `product_categories` and `product_types` ✅
 
 ### Work Completed
-_To be filled in as work progresses._
+
+**Step 1 — Login Page + Product Type Selector**
+- Created `gh-pages` branch from `main`
+- Pushed 6 files:
+  - `index.html` — single-page shell with two views: `#view-login` and `#view-selector`
+  - `css/styles.css` — clean, responsive styles; navy (`#0f3460`) primary color
+  - `js/config.js` — Supabase client initialization using project URL + anon key
+  - `js/auth.js` — `signIn()`, `signOut()`, `getSession()` helpers
+  - `js/selector.js` — loads `product_categories` → `product_types` cascade; enables Start Request button
+  - `js/app.js` — view routing, session restore on load, login form submit, logout
+- Session-aware: existing session bypasses login and goes straight to selector
+- `Start Request →` button is disabled until a product type is selected; stores `window.selectedProductTypeId` for the next view
 
 ### Errors & Fixes
 _To be filled in as work progresses._
 
-### Next Steps → Milestone 6
-_To be defined upon Milestone 5 completion._
+### Next Steps — Milestone 5 (continued)
+- Enable GitHub Pages on the `gh-pages` branch in repo settings (manual step — requires repo owner)
+- Build `#view-request` — dynamic spec input form drawn from `quote_template_fields`; creates `customer_requests` + `request_spec_values` rows and calls `run_match` RPC
+- Build `#view-results` — ranked match results table from `match_results` showing brand, part number, score, vendor priority, and miss notes
+- Wire `Start Request →` button to navigate to `#view-request`
 
 ---
 
