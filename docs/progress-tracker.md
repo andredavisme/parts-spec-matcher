@@ -195,4 +195,206 @@ Milestone 2 complete. Reference data seeded, placeholder catalog items in place 
 - Inserted 42 new `quote_templates` records (IDs 2–43), one per remaining active product type
 - Populated `quote_template_fields` for all 42 new templates by selecting directly from `spec_definitions` where `product_type_id` matches
 - Fields inherit `sort_order` and `is_required` from their corresponding `spec_definitions` rows
-- `
+- `display_hint` left NULL — to be populated by DBA or admin UI in Milestone 6
+
+**Final Counts**
+- `quote_templates`: 43 (one per product type)
+- `quote_template_fields`: 246 (matches total active spec definitions; 18 fields added in IDs 229–246 during Milestone 5 caused the increase from the originally documented 228)
+
+### Errors & Fixes
+None encountered.
+
+### Next Steps → Milestone 4
+- Build the `parts_matcher.run_match(p_request_id integer)` PostgreSQL function as a Supabase RPC
+
+---
+
+## Milestone 4 — Match Query Engine
+**Status:** ✅ Complete  
+**Date:** 2026-05-11
+
+### Prior Work
+Milestone 3 complete. Quote templates built for all 43 product types. Fields match spec definitions exactly.
+
+### Dependencies
+- Catalog items with complete spec values for at least one product type ✅ (3 Conveyor Roller items)
+- Vendor priority data entered for at least one product type ✅ (Browning rank 1, Dodge rank 2, Rexnord rank 3)
+- Defined tolerance / matching rules per spec field type ✅
+
+### Work Completed
+
+**Test Customer Request**
+- Inserted 1 `customer_requests` record (ID: 1): product_type_id=1, template_id=1, customer_name="Test Customer", ref="TEST-001"
+- Inserted 8 `request_spec_values` (IDs 1–8) covering all Conveyor Roller spec fields
+
+**Scoring Logic**
+- `exact` → 1.0 if match, 0.0 if not (case-insensitive for text)
+- `nearest` → `1.0 / (1.0 + abs(customer_value - catalog_value))`
+- `range` → 1.0 if `customer_value <= catalog_value`, else 0.0
+- Final score = `(sum of field scores / total customer-supplied fields) * 100`
+- Secondary sort: `vendor_item_priority.priority_rank` ASC
+
+**Test Results — `SELECT * FROM parts_matcher.run_match(1)`**
+
+| Rank | Brand | Part Number | Score | Vendor Priority |
+|---|---|---|---|---|
+| 1 | Dodge | DGE-CR-250-36-0750 | 90.53 | 2 |
+| 2 | Browning | BRW-CR-190-24-0500 | 46.97 | 1 |
+| 3 | Rexnord | RXN-CR-350-48-1000 | 31.79 | 3 |
+
+**Migrations Applied**
+- `parts_matcher_run_match_function_v2_drop_recreate` — final working version ✅
+
+### Errors & Fixes
+
+**Ambiguous column reference in RETURNS TABLE** — Fixed by prefixing all output columns with `out_`  
+**Cannot change return type of existing function** — Fixed by `DROP FUNCTION IF EXISTS` before `CREATE FUNCTION`
+
+### Next Steps → Milestone 5
+- Scaffold Vanilla JS frontend on `gh-pages` branch
+- Implement login view, product type selector, request form, and match results view
+
+---
+
+## Milestone 5 — Frontend Interface
+**Status:** ✅ Complete  
+**Date:** 2026-05-11
+
+### Prior Work
+Milestone 4 complete. Match engine functional and validated end-to-end.
+
+### Dependencies
+- Frontend stack: Vanilla HTML/CSS/JS hosted on GitHub Pages (`gh-pages` branch) ✅
+- Supabase anon key for client queries ✅
+- Auth strategy: Supabase email/password for sales reps ✅
+- RLS: `authenticated_read` + `authenticated_insert` policies on all relevant `parts_matcher` tables ✅
+- `public.run_match` wrapper function with `GRANT EXECUTE TO authenticated` ✅
+- `public.pm_*` views over all `parts_matcher` tables with `security_invoker = false` ✅
+
+### Work Completed
+
+**Step 1 — Login Page + Product Type Selector**
+- Created `gh-pages` branch from `main`
+- Pushed 6 files: `index.html`, `css/styles.css`, `js/config.js`, `js/auth.js`, `js/selector.js`, `js/app.js`
+- Session-aware: existing session bypasses login and goes straight to selector
+
+**Step 2 — Request Form + Results View**
+- Updated `index.html` to include all 4 views: `#view-login`, `#view-selector`, `#view-request`, `#view-results`
+- `js/request.js`: loads active template, renders dynamic spec fields, inserts `customer_requests` + `request_spec_values`, calls `run_match` RPC
+- `js/results.js`: renders ranked results table with score bars, brand, part number, vendor priority, miss notes
+- Full 4-view navigation with back buttons and logout on all views
+
+**Step 3 — Live End-to-End Test**
+- Signed in as `dev@chronicle.local` (admin)
+- Tested Conveyor Roller: match results screen returned 3 ranked results ✅
+- Tested Deep Groove Ball Bearing and Chain Coupling: no results (expected — no catalog items for those types yet) ✅
+- Additional catalog items added during testing (IDs 4–8) to validate match engine across multiple product types:
+
+| ID | Brand | Part Number | Description | Product Type |
+|---|---|---|---|---|
+| 4 | SKF | 6205-2RS | Single row deep groove ball bearing 25mm bore sealed | Deep Groove Ball Bearing |
+| 5 | NSK | 6205-2Z | Single row deep groove ball bearing 25mm bore shielded | Deep Groove Ball Bearing |
+| 6 | Dodge | P2B-IP-100 | Cast iron pillow block 1 inch bore | Pillow Block Bearing |
+| 7 | Tsubaki | 50-1-10FT | ANSI #50 single strand roller chain 10ft | Roller Chain |
+| 8 | Rexnord | 40-1-10FT | ANSI #40 single strand roller chain 10ft | Roller Chain |
+
+**GitHub Pages**
+- App live at: https://andredavisme.github.io/parts-spec-matcher/
+
+### Errors & Fixes
+
+**1. CDN global name collision**
+- `const supabase` in `config.js` collided with the `supabase` global exposed by the jsdelivr CDN bundle.
+- **Fix:** Renamed client variable to `sbClient` across all JS files.
+
+**2. Stale anon key**
+- `config.js` contained an old anon key from a previous session; Supabase returned `Invalid API key`.
+- **Fix:** Fetched current key via MCP and updated `config.js`.
+
+**3. Password reset via SQL — `crypt()` schema path**
+- First password reset attempt used `crypt()` without schema qualification; function silently no-oped because `pgcrypto` lives in the `extensions` schema.
+- **Fix:** Used `extensions.crypt()` and `extensions.gen_salt()` explicitly.
+
+**4. `parts_matcher` schema not exposed to PostgREST**
+- `.schema('parts_matcher').from(...)` queries returned 406, then 404 after the `ALTER ROLE` attempt.
+- `ALTER ROLE authenticator SET pgrst.db_schemas` via SQL is overridden by Supabase's managed configuration on reload and cannot be set this way.
+- **Fix:** Created `public.pm_*` views over all `parts_matcher` tables. All JS queries updated to use `pm_*` view names with no `.schema()` call.
+
+**5. `security_invoker = true` blocked cross-schema view reads**
+- Views with `security_invoker = true` over `parts_matcher` tables returned 403 because PostgREST couldn't resolve the cross-schema ownership chain for the calling role.
+- **Fix:** Set `security_invoker = false` (security definer) on all `pm_*` views. Access control is enforced at the view grant level (`authenticated` role) and via RLS on the underlying tables for writes.
+
+**6. INSERT permission denied for sequence**
+- INSERT to `pm_customer_requests` returned `permission denied for sequence customer_requests_id_seq`.
+- **Fix:** `GRANT USAGE, SELECT ON SEQUENCE parts_matcher.customer_requests_id_seq TO authenticated` and same for `request_spec_values_id_seq`. Also granted `INSERT` directly on the underlying tables.
+
+**7. `run_match` RPC 404**
+- `supabase.rpc('run_match', ...)` returned 404 because PostgREST only exposes functions in the `public` schema by default, and `parts_matcher.run_match` is not in `public`.
+- **Fix:** Created `public.run_match(p_request_id integer)` as a `SECURITY DEFINER` wrapper that calls `parts_matcher.run_match`. Granted `EXECUTE` to `authenticated`.
+
+**8. Wrong column names in `results.js`**
+- `results.js` referenced `out_brand_name` and `out_miss_notes`; actual `run_match` return columns are `out_brand` and `out_match_notes`.
+- **Fix:** Updated column references in `results.js` to match the actual function signature.
+
+### Next Steps → Milestone 6
+- Begin Milestone 6: Admin / DBA Tooling
+- Admin screens needed: Catalog Items (primary), Vendors, Brands, Product Types, Spec Definitions, Vendor Item Priority
+- CSV bulk upload support for catalog items and specs
+
+---
+
+## Milestone 6 — Admin / DBA Tooling
+**Status:** 🔄 In Progress  
+**Date:** 2026-05-12
+
+### Prior Work
+Milestone 5 complete. Sales rep interface validated end-to-end. Conveyor Roller match results confirmed working in production. Additional catalog items added for Deep Groove Ball Bearing, Pillow Block Bearing, and Roller Chain during testing (IDs 4–8). 18 additional spec definitions added (IDs 229–246) for 7 product types during validation.
+
+### Dependencies
+- `dev@chronicle.local` confirmed as admin user (`parts_matcher_role: admin` in app_metadata) ✅
+- RLS admin write policies already in place on all `parts_matcher` tables ✅
+- `pm_*` public views in place for reads ✅
+
+### Work Completed
+
+**Admin Gate (`app.js`)**
+- `maybeShowAdminBtns()` added to `app.js`
+- Reads `session.user.app_metadata.parts_matcher_role` on login and session restore
+- Shows/hides 3 admin header buttons (Catalog Items, Spec Definitions, CSV Upload) based on the claim
+- Verified live: admin buttons appear for `dev@chronicle.local`, hidden for non-admin users ✅
+
+**Catalog Items Screen (`admin-catalog.js` + `#view-admin-catalog` in `index.html`)**
+- Full CRUD: list, add, edit, deactivate/reactivate
+- List view includes filters by category, product type, and brand
+- Add/Edit modal includes inline spec value editing (all spec definitions for the selected product type rendered as form fields)
+- Saves to `parts_matcher.catalog_items` + `parts_matcher.catalog_item_specs` via `pm_*` views
+- Activate/deactivate toggle updates `is_active` flag
+
+**Spec Definitions Screen (`admin-specs.js` + `#view-admin-specs` in `index.html`)**
+- List and edit spec definitions by product type
+- Wired up and accessible via admin header button
+
+**CSV Upload Screen (`admin-upload.js` + `#view-admin-upload` in `index.html`)**
+- Bulk upload interface for catalog items and specs
+- Wired up and accessible via admin header button
+
+**Performance Advisor — Unindexed Foreign Keys**
+- Performance advisor run on 2026-05-12 flagged unindexed foreign keys across multiple schemas
+- Indexes added only for `public` and `parts_matcher` schemas (other schemas belong to separate projects and were not modified)
+- Migration applied: `add_indexes_for_unindexed_foreign_keys`
+  - 46 indexes added in `public` schema
+  - 12 indexes added in `parts_matcher` schema
+
+### Errors & Fixes
+
+**Thread Context Loss on Milestone 6 Restart**
+- The development thread for Milestone 6 was discarded before the admin tooling work was logged in the progress tracker
+- Work was already complete in the codebase but undocumented; discovered on restart by reading actual JS files
+- **Fix:** Reconstructed work completed from codebase inspection and session notes. Logged retrospectively.
+- **Process improvement:** See updated recovery procedure in `docs/build-guide.md` — capture AI responses before deleting a thread and include them in the new thread prompt.
+
+### Next Steps → Milestone 7
+- Verify Spec Definitions and CSV Upload screens work end-to-end in the live app
+- Add Vendors, Brands, and Vendor Item Priority admin screens (not yet built)
+- Populate real catalog data via CSV upload for remaining product types
+- Run security advisor after any additional schema changes
