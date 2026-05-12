@@ -339,10 +339,14 @@ button {
   transition: width 0.4s;
 }
 
-/* ===== ADMIN VIEW ===== */
+/* ===== ADMIN VIEWS ===== */
+#view-admin-vendors,
+#view-admin-brands,
+#view-admin-pt,
+#view-admin-priority,
+#view-admin-catalog,
 #view-admin-specs,
-#view-admin-upload,
-#view-admin-catalog {
+#view-admin-upload {
   flex-direction: column;
   min-height: 100vh;
 }
