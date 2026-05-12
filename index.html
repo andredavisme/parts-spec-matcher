@@ -35,6 +35,7 @@
       <div class="header-right">
         <span id="user-email" class="user-email"></span>
         <button id="admin-specs-btn" class="btn-admin hidden">&#9881; Spec Definitions</button>
+        <button id="admin-upload-btn" class="btn-admin hidden">&#128230; Catalog Upload</button>
         <button id="logout-btn" class="btn-secondary">Sign Out</button>
       </div>
     </header>
@@ -231,6 +232,112 @@
     </main>
   </div>
 
+  <!-- ADMIN: CATALOG UPLOAD VIEW -->
+  <div id="view-admin-upload" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher &mdash; Catalog Upload</span>
+      <div class="header-right">
+        <button id="admin-upload-back-btn" class="btn-secondary">&larr; Back</button>
+        <span id="user-email-admin-upload" class="user-email"></span>
+        <button id="logout-btn-admin-upload" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="admin-main">
+
+      <div class="upload-intro">
+        <h2>CSV Bulk Upload &mdash; Catalog Items</h2>
+        <p class="hint">Upload two CSV files to batch-insert or update catalog items and their spec values. Download the templates below to get started.</p>
+      </div>
+
+      <!-- Template downloads -->
+      <div class="upload-section">
+        <h3 class="upload-section-title">Step 1 &mdash; Download Templates</h3>
+        <div class="template-cards">
+          <div class="template-card">
+            <div class="template-card-icon">&#128196;</div>
+            <div class="template-card-body">
+              <strong>catalog_items_template.csv</strong>
+              <p>One row per catalog item. Columns: <code>product_type_name</code>, <code>brand_name</code>, <code>part_number</code>, <code>description</code>, <code>is_active</code></p>
+            </div>
+            <button id="dl-items-btn" class="btn-dl">&#11015; Download</button>
+          </div>
+          <div class="template-card">
+            <div class="template-card-icon">&#128196;</div>
+            <div class="template-card-body">
+              <strong>catalog_item_specs_template.csv</strong>
+              <p>One row per spec value. Columns: <code>part_number</code>, <code>brand_name</code>, <code>spec_field_name</code>, <code>spec_value</code></p>
+            </div>
+            <button id="dl-specs-btn" class="btn-dl">&#11015; Download</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- File upload -->
+      <div class="upload-section">
+        <h3 class="upload-section-title">Step 2 &mdash; Upload Your Files</h3>
+        <p class="hint" style="margin-bottom:1rem">Upload <strong>catalog_items</strong> first, then <strong>catalog_item_specs</strong>. Both files are validated before any rows are inserted. Re-uploading an existing part number + brand combination will update that item.</p>
+
+        <div class="upload-panels">
+
+          <!-- Panel A: Catalog Items -->
+          <div class="upload-panel">
+            <div class="upload-panel-header">
+              <span class="upload-panel-num">A</span>
+              <span class="upload-panel-title">Catalog Items CSV</span>
+              <span id="items-file-status" class="upload-file-status"></span>
+            </div>
+            <label class="file-drop-zone" id="items-drop-zone" for="items-file-input">
+              <span id="items-drop-label">Click to choose file or drag &amp; drop</span>
+              <input type="file" id="items-file-input" accept=".csv" class="hidden-file-input" />
+            </label>
+            <div id="items-preview-wrap" class="preview-wrap hidden">
+              <p class="preview-label">Preview (<span id="items-preview-count"></span> rows)</p>
+              <div class="preview-scroll">
+                <table class="preview-table" id="items-preview-table"></table>
+              </div>
+            </div>
+            <p id="items-validate-msg" class="upload-validate-msg hidden"></p>
+          </div>
+
+          <!-- Panel B: Catalog Item Specs -->
+          <div class="upload-panel">
+            <div class="upload-panel-header">
+              <span class="upload-panel-num">B</span>
+              <span class="upload-panel-title">Catalog Item Specs CSV</span>
+              <span id="specs-file-status" class="upload-file-status"></span>
+            </div>
+            <label class="file-drop-zone" id="specs-drop-zone" for="specs-file-input">
+              <span id="specs-drop-label">Click to choose file or drag &amp; drop</span>
+              <input type="file" id="specs-file-input" accept=".csv" class="hidden-file-input" />
+            </label>
+            <div id="specs-preview-wrap" class="preview-wrap hidden">
+              <p class="preview-label">Preview (<span id="specs-preview-count"></span> rows)</p>
+              <div class="preview-scroll">
+                <table class="preview-table" id="specs-preview-table"></table>
+              </div>
+            </div>
+            <p id="specs-validate-msg" class="upload-validate-msg hidden"></p>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Upload action -->
+      <div class="upload-section upload-action-row">
+        <button id="upload-run-btn" class="btn-primary upload-run-btn" disabled>&#8593; Run Upload</button>
+        <p id="upload-global-error" class="error-msg hidden"></p>
+        <p id="upload-global-success" class="success-msg hidden"></p>
+      </div>
+
+      <!-- Results log -->
+      <div id="upload-log-wrap" class="upload-section hidden">
+        <h3 class="upload-section-title">Upload Log</h3>
+        <div id="upload-log" class="upload-log"></div>
+      </div>
+
+    </main>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
@@ -238,6 +345,7 @@
   <script src="js/request.js"></script>
   <script src="js/results.js"></script>
   <script src="js/admin-specs.js"></script>
+  <script src="js/admin-upload.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
