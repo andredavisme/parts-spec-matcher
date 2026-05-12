@@ -101,7 +101,22 @@ Match results are returned ordered by: (1) spec match score (descending), (2) ve
 
 ## Catalog Data Sourcing
 
-Initial placeholder data has been entered for Conveyor Roller (3 items, 3 brands) to support end-to-end workflow testing. Real catalog data will be sourced from:
+As of Milestone 5, the following catalog items are loaded (8 total across 4 product types):
+
+| ID | Brand | Part Number | Description | Product Type |
+|---|---|---|---|---|
+| 1 | Browning | BRW-CR-190-24-0500 | Steel Conveyor Roller, 1.9" dia × 24" BF, 1/2" shaft | Conveyor Roller |
+| 2 | Dodge | DGE-CR-250-36-0750 | Galvanized Conveyor Roller, 2.5" dia × 36" BF, 3/4" shaft | Conveyor Roller |
+| 3 | Rexnord | RXN-CR-350-48-1000 | Heavy Duty Conveyor Roller, 3.5" dia × 48" BF, 1" shaft | Conveyor Roller |
+| 4 | SKF | 6205-2RS | Single row deep groove ball bearing, 25mm bore, sealed | Deep Groove Ball Bearing |
+| 5 | NSK | 6205-2Z | Single row deep groove ball bearing, 25mm bore, shielded | Deep Groove Ball Bearing |
+| 6 | Dodge | P2B-IP-100 | Cast iron pillow block, 1" bore | Pillow Block Bearing |
+| 7 | Tsubaki | 50-1-10FT | ANSI #50 single strand roller chain, 10ft | Roller Chain |
+| 8 | Rexnord | 40-1-10FT | ANSI #40 single strand roller chain, 10ft | Roller Chain |
+
+Items 1–3 were added as placeholder data in Milestone 2. Items 4–8 were added during Milestone 5 end-to-end testing to validate the match engine across multiple product types. All remaining 39 product types have no catalog items yet — this is the primary goal of Milestone 6 admin tooling.
+
+Real catalog data will be sourced from:
 - Brand-supplied PDF catalogs
 - Public-facing brand web catalogs
 - Vendor price sheets
