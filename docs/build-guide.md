@@ -66,7 +66,7 @@ Describe the core workflow from the perspective of a real user. Walk through a s
 - Each action the user takes
 - What the system returns
 - Any backend roles (e.g., database administrator)
-- The stated objective (the “why”)
+- The stated objective (the "why")
 
 **Example:**
 ```
@@ -177,7 +177,7 @@ In the Supabase dashboard:
    ```json
    { "parts_matcher_role": "admin" }
    ```
-4. The user’s next authenticated request will carry the updated claim
+4. The user's next authenticated request will carry the updated claim
 
 ### Why This Approach
 - No custom PostgreSQL roles needed
@@ -217,7 +217,7 @@ const sbClient = window.supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_ANON_KE
 - The anon key and project URL are safe to commit to the `gh-pages` branch since RLS enforces all access control
 
 ### Auth Flow
-Authentication uses Supabase’s built-in email/password provider:
+Authentication uses Supabase's built-in email/password provider:
 
 ```javascript
 // Sign in
@@ -232,7 +232,7 @@ if (!session) { /* show login view */ }
 ```
 
 - Sales rep accounts are created in the Supabase dashboard under **Authentication → Users**
-- Admin access is granted by adding `{ "parts_matcher_role": "admin" }` to a user’s **App Metadata**
+- Admin access is granted by adding `{ "parts_matcher_role": "admin" }` to a user's **App Metadata**
 - The frontend checks for the admin claim to show/hide admin UI elements:
   ```javascript
   const isAdmin = session?.user?.app_metadata?.parts_matcher_role === 'admin';
@@ -242,7 +242,7 @@ if (!session) { /* show login view */ }
 
 Supabase PostgREST only exposes the `public` schema by default. Calling tables or functions in a custom schema (e.g., `parts_matcher`) requires one of:
 
-1. **Adding the schema to PostgREST’s exposed schemas list** — done via the Supabase Dashboard under **Project Settings → API → Exposed schemas**. Cannot be set via SQL as Supabase’s managed configuration overrides it.
+1. **Adding the schema to PostgREST's exposed schemas list** — done via the Supabase Dashboard under **Project Settings → API → Exposed schemas**. Cannot be set via SQL as Supabase's managed configuration overrides it.
 2. **Creating `public` wrapper views/functions** — the approach used in this project. Create `public.pm_*` views over each `parts_matcher` table, and a `public.run_match()` wrapper over `parts_matcher.run_match()`. All JS queries then target the `public` schema normally with no `.schema()` call.
 
 **Key rules for wrapper views:**
@@ -373,10 +373,10 @@ This was the longest milestone by far — almost entirely due to data volume and
 **Failure points:**
 
 1. **`vendor_item_priority` missing `brand_id` — ~20 min lost**
-   - Original schema had unique constraint on `(vendor_id, product_type_id)` which didn’t support brand-level differentiation with a single vendor
+   - Original schema had unique constraint on `(vendor_id, product_type_id)` which didn't support brand-level differentiation with a single vendor
    - Two rows were inserted before the issue was discovered
    - **Fix:** Migration to add `brand_id`, update constraint, delete orphaned rows
-   - **Prevention:** When designing priority/ranking tables, always ask “what’s the most granular level this needs to work at?” before inserting data
+   - **Prevention:** When designing priority/ranking tables, always ask "what's the most granular level this needs to work at?" before inserting data
 
 2. **Brand deduplication — ~15 min**
    - Source brand list from easternia.com had trademark symbols and minor formatting inconsistencies
@@ -439,7 +439,7 @@ This milestone had the most failure points — all Supabase-specific — which e
 
 4. **`parts_matcher` schema not exposed to PostgREST — ~15 min**
    - `.schema('parts_matcher').from(...)` returned 406, then 404 after failed `ALTER ROLE` attempts
-   - `ALTER ROLE authenticator SET pgrst.db_schemas` is overridden by Supabase’s managed config on reload and has no permanent effect
+   - `ALTER ROLE authenticator SET pgrst.db_schemas` is overridden by Supabase's managed config on reload and has no permanent effect
    - **Fix:** Created `public.pm_*` views over all `parts_matcher` tables. All JS queries updated to use `pm_*` with no `.schema()` call
    - **Prevention:** On Supabase managed projects, never assume you can expose a custom schema via SQL. Either add it in the Dashboard (**Settings → API → Exposed schemas**) or use the `public` wrapper view pattern documented above.
 
@@ -459,7 +459,7 @@ This milestone had the most failure points — all Supabase-specific — which e
    - `sbClient.rpc('run_match', ...)` returned 404 because PostgREST only serves functions from `public` by default
    - **Fix:** Created `public.run_match(p_request_id integer)` as a `SECURITY DEFINER` SQL wrapper calling `parts_matcher.run_match`
    - Wrapper return type must exactly match the underlying function — first attempt failed because assumed column names differed from actual. Inspected with `pg_get_function_result()` before the second attempt succeeded.
-   - **Prevention:** For any function in a non-public schema, create a `public` wrapper at the same time as the function. Don’t wait until the frontend hits a 404 to discover this.
+   - **Prevention:** For any function in a non-public schema, create a `public` wrapper at the same time as the function. Don't wait until the frontend hits a 404 to discover this.
 
 8. **Wrong column names in `results.js` — ~5 min**
    - `results.js` used `out_brand_name` and `out_miss_notes`; actual return columns were `out_brand` and `out_match_notes`
@@ -488,3 +488,33 @@ This milestone had the most failure points — all Supabase-specific — which e
 4. Review the generated documentation before proceeding to schema creation
 5. Proceed milestone by milestone, updating `progress-tracker.md` as each one completes
 6. For any custom-schema project: create `public` wrapper views and functions **at the time the schema objects are created**, not when the frontend first hits a 404
+
+---
+
+## When the AI Prompt Fails — How to Recover
+
+If Perplexity gets stuck, returns an error, asks you to try again, or a tool call fails mid-task, **the fastest and most reliable recovery is to delete the thread and start a new one.**
+
+This works because all meaningful progress is already committed to the repo and the progress tracker. The thread is disposable — the repo is the source of truth.
+
+### Recovery Steps
+
+1. **Delete the current thread** in Perplexity
+2. **Start a new thread** in the same Space
+3. **Use this prompt to re-establish context:**
+
+```
+Pick up where we left off in [repo name]. Review docs/progress-tracker.md to get current
+on completed milestones and next steps, then continue from there.
+```
+
+Perplexity will read the repo, locate the last completed milestone in `progress-tracker.md`, and resume without needing any manual re-explanation.
+
+### Why This Works
+- Milestones are committed to the repo as they complete — nothing mid-milestone is lost as long as you keep `progress-tracker.md` current
+- The progress tracker is specifically structured to serve as a handoff document for exactly this scenario
+- Starting fresh clears any corrupted context or tool state that caused the failure in the first place
+
+### Best Practice
+- **Commit and update `progress-tracker.md` at the end of every milestone** — this is what makes thread recovery seamless
+- Don't try to salvage a broken thread; the overhead of re-explaining context in a degraded session is higher than the cost of a clean restart
