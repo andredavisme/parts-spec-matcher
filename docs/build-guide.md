@@ -66,7 +66,7 @@ Describe the core workflow from the perspective of a real user. Walk through a s
 - Each action the user takes
 - What the system returns
 - Any backend roles (e.g., database administrator)
-- The stated objective (the "why")
+- The stated objective (the “why”)
 
 **Example:**
 ```
@@ -275,7 +275,13 @@ The frontend is organized as a **single-page app** (`index.html`) with multiple 
 | `#view-selector` | Product category + type dropdowns; sales rep starting point |
 | `#view-request` | Dynamic spec entry form drawn from `quote_template_fields` |
 | `#view-results` | Ranked match results from `run_match` |
-| `#view-admin` | Admin panel — reference and catalog data management (admin only) |
+| `#view-admin-vendors` | Admin — Vendors CRUD |
+| `#view-admin-brands` | Admin — Brands CRUD |
+| `#view-admin-pt` | Admin — Product Types CRUD |
+| `#view-admin-priority` | Admin — Vendor Item Priority CRUD |
+| `#view-admin-catalog` | Admin — Catalog Items CRUD with inline spec editing |
+| `#view-admin-specs` | Admin — Spec Definitions CRUD with sort order management |
+| `#view-admin-upload` | Admin — CSV bulk upload for catalog items and specs |
 
 Supporting files:
 
@@ -287,7 +293,14 @@ Supporting files:
 | `js/selector.js` | Category → product type cascade loader |
 | `js/request.js` | Template loader, dynamic form renderer, insert + RPC call |
 | `js/results.js` | Ranked results table renderer |
-| `js/app.js` | View routing, session restore on load, login/logout handlers |
+| `js/admin-vendors.js` | Vendors CRUD screen logic |
+| `js/admin-brands.js` | Brands CRUD screen logic |
+| `js/admin-product-types.js` | Product Types CRUD screen logic |
+| `js/admin-priority.js` | Vendor Item Priority CRUD screen logic |
+| `js/admin-catalog.js` | Catalog Items CRUD with inline spec editor |
+| `js/admin-specs.js` | Spec Definitions CRUD with sort order reordering |
+| `js/admin-upload.js` | CSV bulk upload: parse, validate, preview, commit |
+| `js/app.js` | View routing, session restore on load, login/logout handlers, admin gate |
 
 ---
 
@@ -470,6 +483,49 @@ This milestone had the most failure points — all Supabase-specific — which e
 
 ---
 
+## Actual Milestone Timing — Session 2 (2026-05-12)
+
+Milestone 6 was developed across multiple threads in Session 2, with one thread failure requiring a restart mid-milestone.
+
+### Session Overview
+
+| Milestone | Start (UTC) | End (UTC) | Elapsed | Complexity |
+|---|---|---|---|---|
+| 6 — Admin / DBA Tooling | ~15:00 | ~20:00 | ~300 min (est.) | High |
+
+> Exact start/end times are estimated because two threads were used. The first thread was discarded before completion; the second thread reconstructed and finished the work. Git commit timestamps confirm all 7 admin screens were built and the DB index migration was applied within this session.
+
+---
+
+### Milestone 6 — ~300 minutes (estimated, across 2 threads)
+**What happened:** All 7 admin screens built and deployed: Vendors, Brands, Product Types, Vendor Item Priority, Catalog Items, Spec Definitions, and CSV Upload. Admin gate added to `app.js`. Performance advisor run and 58 indexes added. Spec value column bug in `admin-catalog.js` discovered and fixed.
+
+**Failure points:**
+
+1. **Spec value column mismatch in `admin-catalog.js` — ~10 min**
+   - Catalog Items screen was writing spec values to a non-existent `spec_value` column; actual columns are `value_numeric` and `value_text`
+   - Silently wrote nothing — no DB error, but specs were never saved
+   - **Fix:** Added `catResolveSpecValue()` and `catSpecDisplayValue()` helpers. Updated both READ and WRITE paths to use `value_numeric`/`value_text`
+   - **Prevention:** When a table has split numeric/text value columns (a common denormalization for query performance), verify the column names against the actual schema before writing the insert. Don't assume `spec_value` — check with `\d table_name` or equivalent.
+
+2. **Thread context loss mid-milestone — ~30 min overhead**
+   - First Milestone 6 thread encountered a failure and was discarded
+   - The 4 screens built in that thread (Vendors, Brands, Product Types, Vendor Item Priority) were not yet logged in the progress tracker
+   - Recovery required: starting a new thread, reading the codebase to reconstruct what was done, then continuing
+   - **Fix:** Attached the previous thread's AI responses as context in the new thread prompt. Reconstructed the work log from codebase inspection.
+   - **Prevention:** **Save AI responses before deleting a thread.** Copy the last substantive AI response and attach it when starting the recovery thread. This eliminates the codebase-inspection step and cuts recovery time in half.
+   - See the [recovery procedure](#when-the-ai-prompt-fails--how-to-recover) below.
+
+3. **Performance advisor cross-schema scope — ~10 min**
+   - Running the performance advisor on the shared Supabase project returned findings for all schemas, not just `parts_matcher`
+   - Needed to identify which schemas were relevant before applying index fixes
+   - **Fix:** Scoped the index migration to `public` and `parts_matcher` only; all other schemas left untouched
+   - **Prevention:** On a shared Supabase project, always review advisor findings before acting. Filter by schema name and confirm ownership before applying any fix.
+
+**Benchmark guidance:** Budget 3–5 hours for a full admin tooling milestone with 7 CRUD screens. Each screen with a modal + list view + activate/deactivate takes ~20–30 minutes to build and wire. The thread failure added ~30 minutes of recovery overhead — recoverable if prior AI responses were saved, but painful if not.
+
+---
+
 ## Why This Works
 
 - **Perplexity** maintains project context across sessions within a Space, reducing re-explanation overhead
@@ -499,22 +555,28 @@ This works because all meaningful progress is already committed to the repo and 
 
 ### Recovery Steps
 
-1. **Delete the current thread** in Perplexity
-2. **Start a new thread** in the same Space
-3. **Use this prompt to re-establish context:**
+1. **Before deleting the thread** — copy the last substantive AI response to a text file. This is your recovery context.
+2. **Delete the current thread** in Perplexity
+3. **Start a new thread** in the same Space
+4. **Use this prompt to re-establish context:**
 
 ```
 Pick up where we left off in [repo name]. Review docs/progress-tracker.md to get current
 on completed milestones and next steps, then continue from there.
+
+I'm also attaching the last AI response from the failed thread for additional context:
+[paste or attach the saved AI response here]
 ```
 
-Perplexity will read the repo, locate the last completed milestone in `progress-tracker.md`, and resume without needing any manual re-explanation.
+Perplexity will read the repo, locate the last completed milestone in `progress-tracker.md`, and resume without needing any manual re-explanation. The attached prior response fills in any work that was done but not yet committed.
 
 ### Why This Works
 - Milestones are committed to the repo as they complete — nothing mid-milestone is lost as long as you keep `progress-tracker.md` current
 - The progress tracker is specifically structured to serve as a handoff document for exactly this scenario
 - Starting fresh clears any corrupted context or tool state that caused the failure in the first place
+- Attaching the prior AI response eliminates the need to reconstruct in-progress work from codebase inspection
 
 ### Best Practice
 - **Commit and update `progress-tracker.md` at the end of every milestone** — this is what makes thread recovery seamless
+- **Save the last AI response before deleting a thread** — this covers in-progress work that isn't yet committed
 - Don't try to salvage a broken thread; the overhead of re-explaining context in a degraded session is higher than the cost of a clean restart
