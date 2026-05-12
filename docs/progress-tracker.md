@@ -117,8 +117,21 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
 | Pneumatics & Hydraulics | Pneumatic Cylinder, Hydraulic Cylinder, Solenoid Valve, Pressure Regulator, Hydraulic Pump |
 
 **Spec Definitions — Full Coverage**
-- Added spec definitions for all 43 product types (IDs 1–228 total)
-- Each product type has 3–8 spec fields with required flags, match types, and units
+- Added spec definitions for all 43 product types
+- Initial count after this milestone: 228 spec definitions (IDs 1–228), with 3–8 fields per product type
+- 18 additional spec fields (IDs 229–246) were appended during Milestone 5 testing to improve match quality for 7 product types (see note below)
+- **Final count: 246 total active spec definitions**
+
+> **Spec Definition Additions (IDs 229–246):** Applied after initial seeding during Milestone 5 validation. Fields added per product type:
+> - Engineering Class Chain: `strand_count` (exact), `max_speed` (range)
+> - Chain Coupling: `material` (exact), `max_speed` (range)
+> - Torque Limiter: `reset_type` (exact), `material` (exact)
+> - O-Ring: `as568_number` (exact), `temp_range_max` (range), `pressure_rating` (range)
+> - V-Ring Seal: `max_speed` (range), `temp_range_max` (range), `seal_type` (exact)
+> - Hex Bolt: `drive_type` (exact), `head_type` (exact)
+> - Stud: `grade` (exact), `thread_type` (exact)
+> - Set Screw: `drive_type` (exact), `grade` (exact)
+> All 18 fields are `is_required = false`.
 
 **Admin & CSV Upload Design**
 - Admin CRUD handled via frontend admin screen in Milestone 6
@@ -186,7 +199,7 @@ Milestone 2 complete. Reference data seeded, placeholder catalog items in place 
 
 **Final Counts**
 - `quote_templates`: 43 (one per product type)
-- `quote_template_fields`: 228 (matches total active spec definitions exactly)
+- `quote_template_fields`: 246 (matches total active spec definitions; 18 fields added in IDs 229–246 during Milestone 5 caused the increase from the originally documented 228)
 
 ### Errors & Fixes
 None encountered.
@@ -275,6 +288,15 @@ Milestone 4 complete. Match engine functional and validated end-to-end.
 - Signed in as `dev@chronicle.local` (admin)
 - Tested Conveyor Roller: match results screen returned 3 ranked results ✅
 - Tested Deep Groove Ball Bearing and Chain Coupling: no results (expected — no catalog items for those types yet) ✅
+- Additional catalog items added during testing (IDs 4–8) to validate match engine across multiple product types:
+
+| ID | Brand | Part Number | Description | Product Type |
+|---|---|---|---|---|
+| 4 | SKF | 6205-2RS | Single row deep groove ball bearing 25mm bore sealed | Deep Groove Ball Bearing |
+| 5 | NSK | 6205-2Z | Single row deep groove ball bearing 25mm bore shielded | Deep Groove Ball Bearing |
+| 6 | Dodge | P2B-IP-100 | Cast iron pillow block 1 inch bore | Pillow Block Bearing |
+| 7 | Tsubaki | 50-1-10FT | ANSI #50 single strand roller chain 10ft | Roller Chain |
+| 8 | Rexnord | 40-1-10FT | ANSI #40 single strand roller chain 10ft | Roller Chain |
 
 **GitHub Pages**
 - App live at: https://andredavisme.github.io/parts-spec-matcher/
@@ -325,7 +347,7 @@ Milestone 4 complete. Match engine functional and validated end-to-end.
 **Status:** 🔲 Not Started
 
 ### Prior Work
-Milestone 5 complete. Sales rep interface validated end-to-end. Conveyor Roller match results confirmed working in production.
+Milestone 5 complete. Sales rep interface validated end-to-end. Conveyor Roller match results confirmed working in production. Additional catalog items added for Deep Groove Ball Bearing, Pillow Block Bearing, and Roller Chain during testing (IDs 4–8). 18 additional spec definitions added (IDs 229–246) for 7 product types during validation.
 
 ### Dependencies
 - `dev@chronicle.local` confirmed as admin user (`parts_matcher_role: admin` in app_metadata) ✅
