@@ -37,6 +37,15 @@ function csvRowsToObjects(rows) {
   });
 }
 
+// ---- Helper: resolve spec_value string to { value_numeric, value_text } ----
+function resolveSpecValue(raw) {
+  const num = parseFloat(raw);
+  if (!isNaN(num) && String(num) === raw.trim()) {
+    return { value_numeric: num, value_text: null };
+  }
+  return { value_numeric: null, value_text: raw };
+}
+
 // ---- Template generators ----
 function downloadItemsTemplate() {
   const header = 'product_type_name,brand_name,part_number,description,is_active';
@@ -59,9 +68,9 @@ function triggerDownload(content, filename) {
 }
 
 // ---- State ----
-let _itemsRows  = null;  // parsed objects from catalog_items CSV
-let _specsRows  = null;  // parsed objects from catalog_item_specs CSV
-let _refData    = null;  // { productTypes: [], brands: [], specDefs: [] }
+let _itemsRows  = null;
+let _specsRows  = null;
+let _refData    = null;
 
 // ---- Load reference data once ----
 async function loadRefData() {
@@ -77,11 +86,7 @@ async function loadRefData() {
   if (brandRes.error) throw new Error('Failed to load brands: ' + brandRes.error.message);
   if (specRes.error)  throw new Error('Failed to load spec definitions: ' + specRes.error.message);
 
-  _refData = {
-    productTypes: ptRes.data,
-    brands:       brandRes.data,
-    specDefs:     specRes.data
-  };
+  _refData = { productTypes: ptRes.data, brands: brandRes.data, specDefs: specRes.data };
   return _refData;
 }
 
@@ -114,8 +119,8 @@ function renderPreview(tableEl, rows, maxRows = 5) {
 }
 
 // ---- Validation ----
-const ITEMS_REQUIRED_COLS  = ['product_type_name', 'brand_name', 'part_number'];
-const SPECS_REQUIRED_COLS  = ['part_number', 'brand_name', 'spec_field_name', 'spec_value'];
+const ITEMS_REQUIRED_COLS = ['product_type_name', 'brand_name', 'part_number'];
+const SPECS_REQUIRED_COLS = ['part_number', 'brand_name', 'spec_field_name', 'spec_value'];
 
 function validateItemsRows(rows) {
   const errors = [];
@@ -152,11 +157,10 @@ function validateSpecsRows(rows, itemsRows) {
   if (errors.length) return errors;
 
   const itemKeys = new Set((itemsRows || []).map(r => `${r.brand_name}|${r.part_number}`));
-
   rows.forEach((row, i) => {
     const ln = i + 2;
-    if (!row.part_number)    errors.push(`Row ${ln}: part_number is empty.`);
-    if (!row.brand_name)     errors.push(`Row ${ln}: brand_name is empty.`);
+    if (!row.part_number)     errors.push(`Row ${ln}: part_number is empty.`);
+    if (!row.brand_name)      errors.push(`Row ${ln}: brand_name is empty.`);
     if (!row.spec_field_name) errors.push(`Row ${ln}: spec_field_name is empty.`);
     if (row.spec_value === undefined || row.spec_value === '') errors.push(`Row ${ln}: spec_value is empty.`);
     if (itemsRows && !itemKeys.has(`${row.brand_name}|${row.part_number}`)) {
@@ -220,8 +224,8 @@ function updateRunBtn() {
 
 // ---- Upload logic ----
 async function runUpload() {
-  const errEl = document.getElementById('upload-global-error');
-  const sucEl = document.getElementById('upload-global-success');
+  const errEl   = document.getElementById('upload-global-error');
+  const sucEl   = document.getElementById('upload-global-success');
   const logWrap = document.getElementById('upload-log-wrap');
   const logEl   = document.getElementById('upload-log');
   const runBtn  = document.getElementById('upload-run-btn');
@@ -243,16 +247,14 @@ async function runUpload() {
   try {
     const ref = await loadRefData();
 
-    // Build lookup maps (name → id), case-insensitive
     const ptMap    = new Map(ref.productTypes.map(r => [r.name.toLowerCase(), r.id]));
     const brandMap = new Map(ref.brands.map(r => [r.name.toLowerCase(), r.id]));
-    // spec defs: map by product_type_id + name → spec_def id
     const specMap  = new Map(ref.specDefs.map(r => [`${r.product_type_id}|${r.name.toLowerCase()}`, r.id]));
 
     // ---- Phase 1: Resolve + upsert catalog_items ----
     log('Phase 1: Upserting catalog items…');
     let itemsInserted = 0, itemsUpdated = 0, itemErrors = 0;
-    const partToItemId = new Map(); // "brand|part_number" → catalog_item id
+    const partToItemId = new Map();
 
     for (const row of _itemsRows) {
       const ptId    = ptMap.get(row.product_type_name.toLowerCase());
@@ -269,7 +271,6 @@ async function runUpload() {
 
       const isActive = row.is_active === '' || ['true','1'].includes((row.is_active || 'true').toLowerCase());
 
-      // Check if item already exists (by brand_id + part_number)
       const { data: existing } = await sbClient
         .from('pm_catalog_items')
         .select('id')
@@ -304,16 +305,13 @@ async function runUpload() {
     log('Phase 2: Upserting catalog item specs…');
     let specsInserted = 0, specsUpdated = 0, specErrors = 0;
 
-    // Need product_type_id per item to resolve spec defs
-    // Build brand|part_number → product_type_id from items rows
     const partToPtId = new Map();
     _itemsRows.forEach(r => {
       const ptId = ptMap.get(r.product_type_name.toLowerCase());
       if (ptId) partToPtId.set(`${r.brand_name.toLowerCase()}|${r.part_number}`, ptId);
     });
 
-    // Also fetch existing items not in this upload batch that may have specs
-    // (specs CSV may reference items already in DB)
+    // Fetch items already in DB that aren't in this upload batch
     const missingKeys = [];
     for (const row of _specsRows) {
       const key = `${row.brand_name.toLowerCase()}|${row.part_number}`;
@@ -337,23 +335,25 @@ async function runUpload() {
     }
 
     for (const row of _specsRows) {
-      const itemKey  = `${row.brand_name.toLowerCase()}|${row.part_number}`;
-      const itemId   = partToItemId.get(itemKey);
-      const ptId     = partToPtId.get(itemKey);
+      const itemKey   = `${row.brand_name.toLowerCase()}|${row.part_number}`;
+      const itemId    = partToItemId.get(itemKey);
+      const ptId      = partToPtId.get(itemKey);
 
       if (!itemId) {
         log(`  SKIP: item not found for part "${row.part_number}" / brand "${row.brand_name}"`, 'log-warn');
         specErrors++; continue;
       }
 
-      const specKey = `${ptId}|${row.spec_field_name.toLowerCase()}`;
+      const specKey   = `${ptId}|${row.spec_field_name.toLowerCase()}`;
       const specDefId = specMap.get(specKey);
       if (!specDefId) {
         log(`  SKIP: unknown spec_field_name "${row.spec_field_name}" for product type (pt_id ${ptId})`, 'log-warn');
         specErrors++; continue;
       }
 
-      // Upsert on (catalog_item_id, spec_definition_id)
+      // Route value to value_numeric or value_text
+      const specVal = resolveSpecValue(row.spec_value);
+
       const { data: exSpec } = await sbClient
         .from('pm_catalog_item_specs')
         .select('id')
@@ -364,14 +364,14 @@ async function runUpload() {
       if (exSpec) {
         const { error } = await sbClient
           .from('pm_catalog_item_specs')
-          .update({ spec_value: row.spec_value, updated_at: new Date().toISOString() })
+          .update({ ...specVal, updated_at: new Date().toISOString() })
           .eq('id', exSpec.id);
         if (error) { log(`  ERROR updating spec ${row.spec_field_name} on ${row.part_number}: ${error.message}`, 'log-error'); specErrors++; continue; }
         specsUpdated++;
       } else {
         const { error } = await sbClient
           .from('pm_catalog_item_specs')
-          .insert({ catalog_item_id: itemId, spec_definition_id: specDefId, spec_value: row.spec_value });
+          .insert({ catalog_item_id: itemId, spec_definition_id: specDefId, ...specVal });
         if (error) { log(`  ERROR inserting spec ${row.spec_field_name} on ${row.part_number}: ${error.message}`, 'log-error'); specErrors++; continue; }
         specsInserted++;
       }
@@ -397,11 +397,8 @@ async function runUpload() {
 function initAdminUpload() {
   _itemsRows = null;
   _specsRows = null;
-
-  // Reset UI
-  ['items-drop-label','specs-drop-label'].forEach((id, i) => {
-    const labels = ['Click to choose file or drag & drop', 'Click to choose file or drag & drop'];
-    document.getElementById(id).textContent = labels[i];
+  ['items-drop-label','specs-drop-label'].forEach(id => {
+    document.getElementById(id).textContent = 'Click to choose file or drag & drop';
   });
   ['items-file-status','specs-file-status'].forEach(id => document.getElementById(id).textContent = '');
   ['items-preview-wrap','specs-preview-wrap','upload-log-wrap'].forEach(id => document.getElementById(id).classList.add('hidden'));
@@ -414,11 +411,9 @@ function bindAdminUploadEvents() {
   document.getElementById('dl-items-btn').addEventListener('click', downloadItemsTemplate);
   document.getElementById('dl-specs-btn').addEventListener('click', downloadSpecsTemplate);
 
-  // File inputs
   document.getElementById('items-file-input').addEventListener('change', e => handleFile(e.target.files[0], 'items'));
   document.getElementById('specs-file-input').addEventListener('change', e => handleFile(e.target.files[0], 'specs'));
 
-  // Drag and drop
   ['items','specs'].forEach(type => {
     const zone = document.getElementById(`${type}-drop-zone`);
     zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
