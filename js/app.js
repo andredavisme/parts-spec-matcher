@@ -14,6 +14,8 @@ function setUserEmailAll(email) {
     'user-email',
     'user-email-request',
     'user-email-results',
+    'user-email-admin-vendors',
+    'user-email-admin-brands',
     'user-email-admin-specs',
     'user-email-admin-catalog',
     'user-email-admin-upload'
@@ -67,6 +69,8 @@ async function init() {
     'logout-btn',
     'logout-btn-request',
     'logout-btn-results',
+    'logout-btn-admin-vendors',
+    'logout-btn-admin-brands',
     'logout-btn-admin-specs',
     'logout-btn-admin-catalog',
     'logout-btn-admin-upload'
@@ -94,6 +98,20 @@ async function init() {
   // Back: Results → Selector
   document.getElementById('results-back-btn').addEventListener('click', () => showView('view-selector'));
 
+  // Admin: Vendors
+  document.getElementById('admin-vendors-btn').addEventListener('click', async () => {
+    showView('view-admin-vendors');
+    await initAdminVendors();
+  });
+  document.getElementById('admin-vendors-back-btn').addEventListener('click', () => showView('view-selector'));
+
+  // Admin: Brands
+  document.getElementById('admin-brands-btn').addEventListener('click', async () => {
+    showView('view-admin-brands');
+    await initAdminBrands();
+  });
+  document.getElementById('admin-brands-back-btn').addEventListener('click', () => showView('view-selector'));
+
   // Admin: Spec Definitions
   document.getElementById('admin-specs-btn').addEventListener('click', async () => {
     showView('view-admin-specs');
@@ -116,6 +134,8 @@ async function init() {
   document.getElementById('admin-upload-back-btn').addEventListener('click', () => showView('view-selector'));
 
   // Bind modal + upload events
+  bindAdminVendorsEvents();
+  bindAdminBrandsEvents();
   bindAdminSpecsModalEvents();
   bindAdminCatalogEvents();
   bindAdminUploadEvents();
@@ -124,7 +144,13 @@ async function init() {
 function maybeShowAdminBtns(session) {
   const meta = session && session.user && session.user.app_metadata;
   const isAdmin = meta && meta.parts_matcher_role === 'admin';
-  ['admin-catalog-btn', 'admin-specs-btn', 'admin-upload-btn'].forEach(id => {
+  [
+    'admin-vendors-btn',
+    'admin-brands-btn',
+    'admin-catalog-btn',
+    'admin-specs-btn',
+    'admin-upload-btn'
+  ].forEach(id => {
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.classList.toggle('hidden', !isAdmin);

@@ -34,6 +34,8 @@
       <span class="app-title">Parts Spec Matcher</span>
       <div class="header-right">
         <span id="user-email" class="user-email"></span>
+        <button id="admin-vendors-btn" class="btn-admin hidden">&#127968; Vendors</button>
+        <button id="admin-brands-btn" class="btn-admin hidden">&#127991; Brands</button>
         <button id="admin-catalog-btn" class="btn-admin hidden">&#128218; Catalog Items</button>
         <button id="admin-specs-btn" class="btn-admin hidden">&#9881; Spec Definitions</button>
         <button id="admin-upload-btn" class="btn-admin hidden">&#128230; Catalog Upload</button>
@@ -125,6 +127,151 @@
     </main>
   </div>
 
+  <!-- ADMIN: VENDORS VIEW -->
+  <div id="view-admin-vendors" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher &mdash; Vendors</span>
+      <div class="header-right">
+        <button id="admin-vendors-back-btn" class="btn-secondary">&larr; Back</button>
+        <span id="user-email-admin-vendors" class="user-email"></span>
+        <button id="logout-btn-admin-vendors" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="admin-main">
+
+      <div class="admin-toolbar">
+        <button id="ven-add-btn" class="btn-action">+ Add Vendor</button>
+      </div>
+
+      <p id="ven-loading" class="hint">Loading&hellip;</p>
+      <p id="ven-error" class="error-msg hidden"></p>
+      <p id="ven-success" class="success-msg hidden"></p>
+
+      <div id="ven-table-wrap" class="hidden">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contact</th>
+              <th>Email</th>
+              <th>Notes</th>
+              <th>Active</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="ven-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Add / Edit modal -->
+      <div id="ven-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-card">
+          <h3 id="ven-modal-title">Add Vendor</h3>
+          <form id="ven-modal-form" novalidate>
+            <input type="hidden" id="ven-modal-id" />
+            <div class="field">
+              <label for="ven-modal-name">Vendor Name <span class="required-star">*</span></label>
+              <input type="text" id="ven-modal-name" placeholder="e.g. Motion Industries" required />
+            </div>
+            <div class="modal-row">
+              <div class="field">
+                <label for="ven-modal-contact">Contact Name</label>
+                <input type="text" id="ven-modal-contact" placeholder="Optional" />
+              </div>
+              <div class="field">
+                <label for="ven-modal-email">Contact Email</label>
+                <input type="email" id="ven-modal-email" placeholder="Optional" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="ven-modal-notes">Notes</label>
+              <input type="text" id="ven-modal-notes" placeholder="Optional" />
+            </div>
+            <div class="field checkbox-field">
+              <label><input type="checkbox" id="ven-modal-active" checked /> Active</label>
+            </div>
+            <p id="ven-modal-error" class="error-msg hidden"></p>
+            <div class="modal-actions">
+              <button type="button" id="ven-modal-cancel-btn" class="btn-modal-cancel">Cancel</button>
+              <button type="submit" id="ven-modal-save-btn" class="btn-modal-save">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ADMIN: BRANDS VIEW -->
+  <div id="view-admin-brands" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher &mdash; Brands</span>
+      <div class="header-right">
+        <button id="admin-brands-back-btn" class="btn-secondary">&larr; Back</button>
+        <span id="user-email-admin-brands" class="user-email"></span>
+        <button id="logout-btn-admin-brands" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="admin-main">
+
+      <div class="admin-toolbar">
+        <button id="br-add-btn" class="btn-action">+ Add Brand</button>
+      </div>
+
+      <p id="br-loading" class="hint">Loading&hellip;</p>
+      <p id="br-error" class="error-msg hidden"></p>
+      <p id="br-success" class="success-msg hidden"></p>
+
+      <div id="br-table-wrap" class="hidden">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Primary Vendor</th>
+              <th>Notes</th>
+              <th>Active</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="br-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Add / Edit modal -->
+      <div id="br-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-card">
+          <h3 id="br-modal-title">Add Brand</h3>
+          <form id="br-modal-form" novalidate>
+            <input type="hidden" id="br-modal-id" />
+            <div class="field">
+              <label for="br-modal-name">Brand Name <span class="required-star">*</span></label>
+              <input type="text" id="br-modal-name" placeholder="e.g. Browning" required />
+            </div>
+            <div class="field">
+              <label for="br-modal-vendor">Primary Vendor</label>
+              <select id="br-modal-vendor">
+                <option value="">&mdash; None &mdash;</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="br-modal-notes">Notes</label>
+              <input type="text" id="br-modal-notes" placeholder="Optional" />
+            </div>
+            <div class="field checkbox-field">
+              <label><input type="checkbox" id="br-modal-active" checked /> Active</label>
+            </div>
+            <p id="br-modal-error" class="error-msg hidden"></p>
+            <div class="modal-actions">
+              <button type="button" id="br-modal-cancel-btn" class="btn-modal-cancel">Cancel</button>
+              <button type="submit" id="br-modal-save-btn" class="btn-modal-save">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
   <!-- ADMIN: SPEC DEFINITIONS VIEW -->
   <div id="view-admin-specs" class="view hidden">
     <header class="app-header">
@@ -137,7 +284,6 @@
     </header>
     <main class="admin-main">
 
-      <!-- Filter bar -->
       <div class="admin-toolbar">
         <div class="admin-filter-group">
           <label for="admin-category-filter">Category</label>
@@ -177,7 +323,6 @@
         </table>
       </div>
 
-      <!-- Add / Edit modal -->
       <div id="spec-modal-overlay" class="modal-overlay hidden">
         <div class="modal-card">
           <h3 id="spec-modal-title">Add Spec Definition</h3>
@@ -245,7 +390,6 @@
     </header>
     <main class="admin-main">
 
-      <!-- Filter bar -->
       <div class="admin-toolbar">
         <div class="admin-filter-group">
           <label for="cat-filter-cat">Category</label>
@@ -289,13 +433,11 @@
         </table>
       </div>
 
-      <!-- Add / Edit modal -->
       <div id="cat-modal-overlay" class="modal-overlay hidden">
         <div class="modal-card catalog-modal-card">
           <h3 id="cat-modal-title">Add Catalog Item</h3>
           <form id="cat-modal-form" novalidate>
             <input type="hidden" id="cat-modal-item-id" />
-
             <div class="modal-row">
               <div class="field">
                 <label for="cat-modal-pt">Product Type <span class="required-star">*</span></label>
@@ -310,7 +452,6 @@
                 </select>
               </div>
             </div>
-
             <div class="modal-row">
               <div class="field">
                 <label for="cat-modal-partnum">Part Number <span class="required-star">*</span></label>
@@ -320,17 +461,14 @@
                 <label><input type="checkbox" id="cat-modal-active" checked /> Active</label>
               </div>
             </div>
-
             <div class="field">
               <label for="cat-modal-desc">Description</label>
               <input type="text" id="cat-modal-desc" placeholder="Optional free-text description" />
             </div>
-
             <hr class="form-divider" />
             <p class="catalog-specs-header">Spec Values <span class="catalog-specs-hint">(leave blank to omit)</span></p>
             <p id="cat-modal-specs-loading" class="hint">Select a product type to load spec fields.</p>
             <div id="cat-modal-specs-grid" class="catalog-specs-grid"></div>
-
             <p id="cat-modal-error" class="error-msg hidden"></p>
             <div class="modal-actions">
               <button type="button" id="cat-modal-cancel-btn" class="btn-modal-cancel">Cancel</button>
@@ -360,7 +498,6 @@
         <p class="hint">Upload two CSV files to batch-insert or update catalog items and their spec values. Download the templates below to get started.</p>
       </div>
 
-      <!-- Template downloads -->
       <div class="upload-section">
         <h3 class="upload-section-title">Step 1 &mdash; Download Templates</h3>
         <div class="template-cards">
@@ -383,14 +520,10 @@
         </div>
       </div>
 
-      <!-- File upload -->
       <div class="upload-section">
         <h3 class="upload-section-title">Step 2 &mdash; Upload Your Files</h3>
         <p class="hint" style="margin-bottom:1rem">Upload <strong>catalog_items</strong> first, then <strong>catalog_item_specs</strong>. Both files are validated before any rows are inserted. Re-uploading an existing part number + brand combination will update that item.</p>
-
         <div class="upload-panels">
-
-          <!-- Panel A: Catalog Items -->
           <div class="upload-panel">
             <div class="upload-panel-header">
               <span class="upload-panel-num">A</span>
@@ -409,8 +542,6 @@
             </div>
             <p id="items-validate-msg" class="upload-validate-msg hidden"></p>
           </div>
-
-          <!-- Panel B: Catalog Item Specs -->
           <div class="upload-panel">
             <div class="upload-panel-header">
               <span class="upload-panel-num">B</span>
@@ -429,18 +560,15 @@
             </div>
             <p id="specs-validate-msg" class="upload-validate-msg hidden"></p>
           </div>
-
         </div>
       </div>
 
-      <!-- Upload action -->
       <div class="upload-section upload-action-row">
         <button id="upload-run-btn" class="btn-primary upload-run-btn" disabled>&#8593; Run Upload</button>
         <p id="upload-global-error" class="error-msg hidden"></p>
         <p id="upload-global-success" class="success-msg hidden"></p>
       </div>
 
-      <!-- Results log -->
       <div id="upload-log-wrap" class="upload-section hidden">
         <h3 class="upload-section-title">Upload Log</h3>
         <div id="upload-log" class="upload-log"></div>
@@ -455,6 +583,8 @@
   <script src="js/selector.js"></script>
   <script src="js/request.js"></script>
   <script src="js/results.js"></script>
+  <script src="js/admin-vendors.js"></script>
+  <script src="js/admin-brands.js"></script>
   <script src="js/admin-specs.js"></script>
   <script src="js/admin-catalog.js"></script>
   <script src="js/admin-upload.js"></script>
