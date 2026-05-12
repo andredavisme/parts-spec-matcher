@@ -344,7 +344,7 @@ Milestone 4 complete. Match engine functional and validated end-to-end.
 ---
 
 ## Milestone 6 — Admin / DBA Tooling
-**Status:** 🔄 In Progress  
+**Status:** ✅ Complete  
 **Date:** 2026-05-12
 
 ### Prior Work
@@ -360,23 +360,50 @@ Milestone 5 complete. Sales rep interface validated end-to-end. Conveyor Roller 
 **Admin Gate (`app.js`)**
 - `maybeShowAdminBtns()` added to `app.js`
 - Reads `session.user.app_metadata.parts_matcher_role` on login and session restore
-- Shows/hides 3 admin header buttons (Catalog Items, Spec Definitions, CSV Upload) based on the claim
+- Shows/hides 7 admin header buttons based on the claim: Vendors, Brands, Product Types, Vendor Priority, Catalog Items, Spec Definitions, CSV Upload
 - Verified live: admin buttons appear for `dev@chronicle.local`, hidden for non-admin users ✅
 
+**Vendors Screen (`admin-vendors.js` + `#view-admin-vendors` in `index.html`)**
+- Full CRUD: list, add, edit, activate/deactivate
+- Fields: vendor name (required), contact name, contact email, notes, is_active
+- Add/Edit modal with validation
+
+**Brands Screen (`admin-brands.js` + `#view-admin-brands` in `index.html`)**
+- Full CRUD: list, add, edit, activate/deactivate
+- Fields: brand name (required), primary vendor (dropdown), notes, is_active
+- Vendor dropdown populated from live `pm_vendors` data
+
+**Product Types Screen (`admin-product-types.js` + `#view-admin-pt` in `index.html`)**
+- Full CRUD: list, add, edit, activate/deactivate
+- Fields: category (required, dropdown), name (required), description, is_active
+- Category dropdown populated from live `pm_product_categories` data
+
+**Vendor Item Priority Screen (`admin-priority.js` + `#view-admin-priority` in `index.html`)**
+- Full CRUD: list, add, edit, delete priority rules
+- Fields: vendor (required), product type (required), brand (optional — blank applies to all brands), priority rank (required), notes
+- Filter by product type
+- Supports brand-optional rules: leaving brand blank sets `brand_id = NULL`, meaning the rule applies to all brands for that vendor + product type combination
+
 **Catalog Items Screen (`admin-catalog.js` + `#view-admin-catalog` in `index.html`)**
-- Full CRUD: list, add, edit, deactivate/reactivate
-- List view includes filters by category, product type, and brand
+- Full CRUD: list, add, edit, activate/deactivate
+- Filters by category, product type, and brand
 - Add/Edit modal includes inline spec value editing (all spec definitions for the selected product type rendered as form fields)
 - Saves to `parts_matcher.catalog_items` + `parts_matcher.catalog_item_specs` via `pm_*` views
-- Activate/deactivate toggle updates `is_active` flag
+- Uses `catResolveSpecValue()` to route numeric values to `value_numeric`, text values to `value_text` — consistent with match engine and CSV upload
 
 **Spec Definitions Screen (`admin-specs.js` + `#view-admin-specs` in `index.html`)**
-- List and edit spec definitions by product type
-- Wired up and accessible via admin header button
+- List grouped by product type with category breadcrumb
+- Sort order reorder via ↑/↓ arrows (swaps `sort_order` values in DB)
+- Add/Edit modal: product type, field name, display label, match type, unit, required, active
+- On insert, auto-creates a corresponding `pm_quote_template_fields` entry
 
 **CSV Upload Screen (`admin-upload.js` + `#view-admin-upload` in `index.html`)**
-- Bulk upload interface for catalog items and specs
-- Wired up and accessible via admin header button
+- RFC 4180-compliant CSV parser
+- Two-file upload: `catalog_items` + `catalog_item_specs` with cross-file validation
+- Phase 1 upserts items (match by `brand_id` + `part_number`); Phase 2 upserts specs
+- Template download buttons for both files
+- Preview table before committing upload
+- Upload log displayed after run
 
 **Performance Advisor — Unindexed Foreign Keys**
 - Performance advisor run on 2026-05-12 flagged unindexed foreign keys across multiple schemas
@@ -387,14 +414,24 @@ Milestone 5 complete. Sales rep interface validated end-to-end. Conveyor Roller 
 
 ### Errors & Fixes
 
+**Spec value column mismatch in `admin-catalog.js`**
+- `admin-catalog.js` was writing spec values to a `spec_value` column that does not exist on `pm_catalog_item_specs`; the actual columns are `value_numeric` and `value_text`
+- This caused spec values entered via the Catalog Items screen to silently write nothing
+- **Fix (commit 56a4ac4):**
+  - Added `catResolveSpecValue(raw)` helper to route numeric inputs to `value_numeric` and text to `value_text`
+  - Added `catSpecDisplayValue(s)` helper to read back the non-null value from `{value_text, value_numeric}` for display
+  - Fixed spec READ in `openCatModal()` to `.select('spec_definition_id, value_text, value_numeric')` instead of the non-existent `spec_value` column
+  - Fixed spec WRITE in `saveCatItem()` to push `{ value_numeric, value_text }` instead of `{ spec_value }`
+
 **Thread Context Loss on Milestone 6 Restart**
-- The development thread for Milestone 6 was discarded before the admin tooling work was logged in the progress tracker
-- Work was already complete in the codebase but undocumented; discovered on restart by reading actual JS files
+- The development thread for Milestone 6 was discarded before the admin tooling work was fully logged in the progress tracker
+- Work was already complete in the codebase but partially undocumented; discovered on restart by reading actual JS files
 - **Fix:** Reconstructed work completed from codebase inspection and session notes. Logged retrospectively.
-- **Process improvement:** See updated recovery procedure in `docs/build-guide.md` — capture AI responses before deleting a thread and include them in the new thread prompt.
+- **Process improvement:** Capture AI responses before deleting a thread and include them in the new thread prompt. See recovery procedure in `docs/build-guide.md`.
 
 ### Next Steps → Milestone 7
-- Verify Spec Definitions and CSV Upload screens work end-to-end in the live app
-- Add Vendors, Brands, and Vendor Item Priority admin screens (not yet built)
-- Populate real catalog data via CSV upload for remaining product types
+- Populate real catalog data via CSV upload for remaining product types (currently only Conveyor Roller, Deep Groove Ball Bearing, Pillow Block Bearing, and Roller Chain have catalog items)
+- Run a full end-to-end test of each admin screen against the live database
+- Add additional users (sales rep accounts) via the Supabase Auth dashboard
+- Consider adding a `#view-admin-units` screen for managing `spec_units` if new units are needed
 - Run security advisor after any additional schema changes
