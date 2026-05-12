@@ -11,6 +11,23 @@ let catFilterCatId   = '';
 let catFilterPtId    = '';
 let catFilterBrandId = '';
 
+// ---- Helper: resolve raw string input to {value_numeric, value_text} ----
+function catResolveSpecValue(raw) {
+  const trimmed = raw.trim();
+  const num = parseFloat(trimmed);
+  if (!isNaN(num) && String(num) === trimmed) {
+    return { value_numeric: num, value_text: null };
+  }
+  return { value_numeric: null, value_text: trimmed };
+}
+
+// ---- Helper: get display string from a spec row {value_text, value_numeric} ----
+function catSpecDisplayValue(s) {
+  if (s.value_numeric !== null && s.value_numeric !== undefined) return String(s.value_numeric);
+  if (s.value_text    !== null && s.value_text    !== undefined) return s.value_text;
+  return '';
+}
+
 // ---- Init ----
 async function initAdminCatalog() {
   const loadingEl = document.getElementById('cat-loading');
@@ -59,7 +76,6 @@ async function loadCatRefData() {
 }
 
 async function loadCatItems() {
-  // Fetch catalog items
   const { data: items, error: iErr } = await sbClient
     .from('pm_catalog_items')
     .select('id, product_type_id, brand_id, part_number, description, is_active')
@@ -68,7 +84,6 @@ async function loadCatItems() {
     .order('part_number');
   if (iErr) throw iErr;
 
-  // Fetch spec value counts per catalog item
   const { data: specRows, error: sErr } = await sbClient
     .from('pm_catalog_item_specs')
     .select('catalog_item_id');
@@ -88,7 +103,6 @@ function populateCatFilters() {
   const ptSel    = document.getElementById('cat-filter-pt');
   const brandSel = document.getElementById('cat-filter-brand');
 
-  // Categories
   const seenCats = new Map();
   catPtData.forEach(pt => {
     if (!seenCats.has(pt.category_id)) seenCats.set(pt.category_id, pt.category_name);
@@ -99,14 +113,12 @@ function populateCatFilters() {
     catSel.appendChild(o);
   });
 
-  // Product types
   ptSel.innerHTML = '<option value="">All Product Types</option>';
   catPtData.forEach(pt => {
     const o = document.createElement('option'); o.value = pt.id; o.textContent = pt.name;
     ptSel.appendChild(o);
   });
 
-  // Brands — only brands that actually appear in catItems
   const usedBrandIds = new Set(catItems.map(i => i.brand_id));
   const usedBrands = catBrands.filter(b => usedBrandIds.has(b.id));
   brandSel.innerHTML = '<option value="">All Brands</option>';
@@ -120,7 +132,6 @@ function populateCatFilters() {
     catFilterPtId    = '';
     catFilterBrandId = '';
     ptSel.value = ''; brandSel.value = '';
-    // Re-populate pt dropdown filtered by category
     ptSel.innerHTML = '<option value="">All Product Types</option>';
     const filtered = catFilterCatId
       ? catPtData.filter(pt => String(pt.category_id) === String(catFilterCatId))
@@ -175,7 +186,6 @@ function renderCatTable() {
   const brandMap = Object.fromEntries(catBrands.map(b => [b.id, b.name]));
   const ptMap    = Object.fromEntries(catPtData.map(pt => [pt.id, pt]));
 
-  // Group by product type
   const groups = [];
   const groupMap = {};
   items.forEach(item => {
@@ -247,14 +257,14 @@ async function toggleCatActive(itemId) {
 
 // ---- Modal ----
 let catModalSpecDefs = [];  // spec defs for the currently selected product type
-let catModalExistingSpecs = {};  // {spec_definition_id: spec_value} for item being edited
+// {spec_definition_id: { value_text, value_numeric }} for item being edited
+let catModalExistingSpecs = {};
 
 async function openCatModal(itemId) {
   const item = itemId ? catItems.find(i => i.id === itemId) : null;
   document.getElementById('cat-modal-title').textContent = item ? 'Edit Catalog Item' : 'Add Catalog Item';
   document.getElementById('cat-modal-item-id').value = item ? item.id : '';
 
-  // Populate product type dropdown
   const ptSel = document.getElementById('cat-modal-pt');
   ptSel.innerHTML = '<option value="">&mdash; Select &mdash;</option>';
   catPtData.forEach(pt => {
@@ -265,7 +275,6 @@ async function openCatModal(itemId) {
     ptSel.appendChild(o);
   });
 
-  // Populate brand dropdown
   const brandSel = document.getElementById('cat-modal-brand');
   brandSel.innerHTML = '<option value="">&mdash; Select &mdash;</option>';
   catBrands.forEach(b => {
@@ -281,15 +290,17 @@ async function openCatModal(itemId) {
   document.getElementById('cat-modal-active').checked = item ? item.is_active : true;
   document.getElementById('cat-modal-error').classList.add('hidden');
 
-  // Load existing spec values if editing
+  // FIX: select value_text and value_numeric (not spec_value)
   catModalExistingSpecs = {};
   if (item) {
     const { data: existingSpecs, error: sErr } = await sbClient
       .from('pm_catalog_item_specs')
-      .select('spec_definition_id, spec_value')
+      .select('spec_definition_id, value_text, value_numeric')
       .eq('catalog_item_id', item.id);
     if (!sErr && existingSpecs) {
-      existingSpecs.forEach(s => { catModalExistingSpecs[s.spec_definition_id] = s.spec_value; });
+      existingSpecs.forEach(s => {
+        catModalExistingSpecs[s.spec_definition_id] = { value_text: s.value_text, value_numeric: s.value_numeric };
+      });
     }
     await loadCatModalSpecs(item.product_type_id);
   } else {
@@ -331,7 +342,9 @@ async function loadCatModalSpecs(productTypeId) {
   catModalSpecDefs.forEach(spec => {
     const unit = unitMap[spec.unit_id];
     const unitHint = unit ? ` <span class="unit-hint">(${unit.abbreviation || unit.name})</span>` : '';
-    const existingVal = catModalExistingSpecs[spec.id] !== undefined ? catModalExistingSpecs[spec.id] : '';
+    // FIX: derive display value from value_text / value_numeric
+    const existing = catModalExistingSpecs[spec.id];
+    const existingVal = existing ? catSpecDisplayValue(existing) : '';
 
     const div = document.createElement('div');
     div.className = 'field';
@@ -373,7 +386,6 @@ async function saveCatItem(e) {
     let savedItemId = itemId ? parseInt(itemId) : null;
 
     if (itemId) {
-      // UPDATE item
       const { error } = await sbClient.from('pm_catalog_items').update({
         product_type_id: ptId,
         brand_id: brandId,
@@ -387,7 +399,6 @@ async function saveCatItem(e) {
       if (existing) Object.assign(existing, { product_type_id: ptId, brand_id: brandId, part_number: partNum, description: desc || null, is_active: isActive });
 
     } else {
-      // INSERT item
       const { data, error } = await sbClient.from('pm_catalog_items').insert({
         product_type_id: ptId,
         brand_id: brandId,
@@ -401,7 +412,7 @@ async function saveCatItem(e) {
       catItems.push({ id: savedItemId, product_type_id: ptId, brand_id: brandId, part_number: partNum, description: desc || null, is_active: isActive, specCount: 0 });
     }
 
-    // Upsert spec values
+    // FIX: upsert using value_numeric / value_text instead of spec_value
     const specInputs = document.querySelectorAll('#cat-modal-specs-grid input[data-spec-id]');
     const upserts = [];
     const deletions = [];
@@ -410,9 +421,15 @@ async function saveCatItem(e) {
       const specDefId = parseInt(input.dataset.specId);
       const val = input.value.trim();
       if (val !== '') {
-        upserts.push({ catalog_item_id: savedItemId, spec_definition_id: specDefId, spec_value: val, created_by: 'admin-ui' });
+        const resolved = catResolveSpecValue(val);
+        upserts.push({
+          catalog_item_id: savedItemId,
+          spec_definition_id: specDefId,
+          value_numeric: resolved.value_numeric,
+          value_text: resolved.value_text,
+          created_by: 'admin-ui'
+        });
       } else if (catModalExistingSpecs[specDefId] !== undefined) {
-        // Field was cleared — delete it
         deletions.push(specDefId);
       }
     });
@@ -432,7 +449,6 @@ async function saveCatItem(e) {
         .eq('spec_definition_id', specDefId);
     }
 
-    // Update local specCount
     const updatedItem = catItems.find(i => i.id === savedItemId);
     if (updatedItem) {
       const { data: sc } = await sbClient
@@ -479,7 +495,6 @@ function bindAdminCatalogEvents() {
   document.getElementById('cat-modal-form').addEventListener('submit', saveCatItem);
   document.getElementById('cat-add-btn').addEventListener('click', () => openCatModal(null));
 
-  // Reload spec fields when product type changes in modal
   document.getElementById('cat-modal-pt').addEventListener('change', async e => {
     catModalExistingSpecs = {};
     await loadCatModalSpecs(e.target.value ? parseInt(e.target.value) : null);
