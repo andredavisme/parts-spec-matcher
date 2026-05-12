@@ -70,7 +70,7 @@ async function loadRefData() {
   const [ptRes, brandRes, specRes] = await Promise.all([
     sbClient.from('pm_product_types').select('id, name').eq('is_active', true),
     sbClient.from('pm_brands').select('id, name').eq('is_active', true),
-    sbClient.from('pm_spec_definitions').select('id, field_name, product_type_id').eq('is_active', true)
+    sbClient.from('pm_spec_definitions').select('id, name, product_type_id').eq('is_active', true)
   ]);
 
   if (ptRes.error)    throw new Error('Failed to load product types: ' + ptRes.error.message);
@@ -246,8 +246,8 @@ async function runUpload() {
     // Build lookup maps (name → id), case-insensitive
     const ptMap    = new Map(ref.productTypes.map(r => [r.name.toLowerCase(), r.id]));
     const brandMap = new Map(ref.brands.map(r => [r.name.toLowerCase(), r.id]));
-    // spec defs: map by product_type_id + field_name → spec_def id
-    const specMap  = new Map(ref.specDefs.map(r => [`${r.product_type_id}|${r.field_name.toLowerCase()}`, r.id]));
+    // spec defs: map by product_type_id + name → spec_def id
+    const specMap  = new Map(ref.specDefs.map(r => [`${r.product_type_id}|${r.name.toLowerCase()}`, r.id]));
 
     // ---- Phase 1: Resolve + upsert catalog_items ----
     log('Phase 1: Upserting catalog items…');
