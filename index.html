@@ -34,6 +34,7 @@
       <span class="app-title">Parts Spec Matcher</span>
       <div class="header-right">
         <span id="user-email" class="user-email"></span>
+        <button id="admin-specs-btn" class="btn-admin hidden">&#9881; Spec Definitions</button>
         <button id="logout-btn" class="btn-secondary">Sign Out</button>
       </div>
     </header>
@@ -122,12 +123,121 @@
     </main>
   </div>
 
+  <!-- ADMIN: SPEC DEFINITIONS VIEW -->
+  <div id="view-admin-specs" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher &mdash; Spec Definitions</span>
+      <div class="header-right">
+        <button id="admin-specs-back-btn" class="btn-secondary">&larr; Back</button>
+        <span id="user-email-admin-specs" class="user-email"></span>
+        <button id="logout-btn-admin-specs" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="admin-main">
+
+      <!-- Filter bar -->
+      <div class="admin-toolbar">
+        <div class="admin-filter-group">
+          <label for="admin-category-filter">Category</label>
+          <select id="admin-category-filter">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+        <div class="admin-filter-group">
+          <label for="admin-pt-filter">Product Type</label>
+          <select id="admin-pt-filter">
+            <option value="">All Product Types</option>
+          </select>
+        </div>
+        <button id="admin-add-spec-btn" class="btn-action">+ Add Spec</button>
+      </div>
+
+      <p id="admin-specs-loading" class="hint">Loading&hellip;</p>
+      <p id="admin-specs-error" class="error-msg hidden"></p>
+      <p id="admin-specs-success" class="success-msg hidden"></p>
+
+      <div id="admin-specs-table-wrap" class="hidden">
+        <table class="admin-table" id="admin-specs-table">
+          <thead>
+            <tr>
+              <th class="col-order">Order</th>
+              <th>Product Type</th>
+              <th>Field Name</th>
+              <th>Display Label</th>
+              <th>Match Type</th>
+              <th>Unit</th>
+              <th>Required</th>
+              <th>Active</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="admin-specs-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Add / Edit modal -->
+      <div id="spec-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-card">
+          <h3 id="spec-modal-title">Add Spec Definition</h3>
+          <form id="spec-modal-form" novalidate>
+            <input type="hidden" id="modal-spec-id" />
+            <div class="field">
+              <label for="modal-pt">Product Type <span class="required-star">*</span></label>
+              <select id="modal-pt" required>
+                <option value="">&mdash; Select &mdash;</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="modal-name">Field Name (snake_case) <span class="required-star">*</span></label>
+              <input type="text" id="modal-name" placeholder="e.g. bore_diameter" required />
+            </div>
+            <div class="field">
+              <label for="modal-label">Display Label <span class="required-star">*</span></label>
+              <input type="text" id="modal-label" placeholder="e.g. Bore Diameter" required />
+            </div>
+            <div class="modal-row">
+              <div class="field">
+                <label for="modal-match-type">Match Type <span class="required-star">*</span></label>
+                <select id="modal-match-type" required>
+                  <option value="exact">exact</option>
+                  <option value="range">range</option>
+                  <option value="nearest">nearest</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="modal-unit">Unit</label>
+                <select id="modal-unit">
+                  <option value="">-- none --</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-row">
+              <div class="field checkbox-field">
+                <label><input type="checkbox" id="modal-required" /> Required</label>
+              </div>
+              <div class="field checkbox-field">
+                <label><input type="checkbox" id="modal-active" checked /> Active</label>
+              </div>
+            </div>
+            <p id="modal-error" class="error-msg hidden"></p>
+            <div class="modal-actions">
+              <button type="button" id="modal-cancel-btn" class="btn-modal-cancel">Cancel</button>
+              <button type="submit" id="modal-save-btn" class="btn-modal-save">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/config.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/selector.js"></script>
   <script src="js/request.js"></script>
   <script src="js/results.js"></script>
+  <script src="js/admin-specs.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
