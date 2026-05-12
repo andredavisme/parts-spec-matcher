@@ -34,6 +34,7 @@
       <span class="app-title">Parts Spec Matcher</span>
       <div class="header-right">
         <span id="user-email" class="user-email"></span>
+        <button id="admin-catalog-btn" class="btn-admin hidden">&#128218; Catalog Items</button>
         <button id="admin-specs-btn" class="btn-admin hidden">&#9881; Spec Definitions</button>
         <button id="admin-upload-btn" class="btn-admin hidden">&#128230; Catalog Upload</button>
         <button id="logout-btn" class="btn-secondary">Sign Out</button>
@@ -232,6 +233,116 @@
     </main>
   </div>
 
+  <!-- ADMIN: CATALOG ITEMS VIEW -->
+  <div id="view-admin-catalog" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher &mdash; Catalog Items</span>
+      <div class="header-right">
+        <button id="admin-catalog-back-btn" class="btn-secondary">&larr; Back</button>
+        <span id="user-email-admin-catalog" class="user-email"></span>
+        <button id="logout-btn-admin-catalog" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="admin-main">
+
+      <!-- Filter bar -->
+      <div class="admin-toolbar">
+        <div class="admin-filter-group">
+          <label for="cat-filter-cat">Category</label>
+          <select id="cat-filter-cat">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+        <div class="admin-filter-group">
+          <label for="cat-filter-pt">Product Type</label>
+          <select id="cat-filter-pt">
+            <option value="">All Product Types</option>
+          </select>
+        </div>
+        <div class="admin-filter-group">
+          <label for="cat-filter-brand">Brand</label>
+          <select id="cat-filter-brand">
+            <option value="">All Brands</option>
+          </select>
+        </div>
+        <button id="cat-add-btn" class="btn-action">+ Add Item</button>
+      </div>
+
+      <p id="cat-loading" class="hint">Loading&hellip;</p>
+      <p id="cat-error" class="error-msg hidden"></p>
+      <p id="cat-success" class="success-msg hidden"></p>
+
+      <div id="cat-table-wrap" class="hidden">
+        <table class="admin-table" id="cat-table">
+          <thead>
+            <tr>
+              <th>Product Type</th>
+              <th>Brand</th>
+              <th>Part Number</th>
+              <th>Description</th>
+              <th>Specs</th>
+              <th>Active</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="cat-tbody"></tbody>
+        </table>
+      </div>
+
+      <!-- Add / Edit modal -->
+      <div id="cat-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-card catalog-modal-card">
+          <h3 id="cat-modal-title">Add Catalog Item</h3>
+          <form id="cat-modal-form" novalidate>
+            <input type="hidden" id="cat-modal-item-id" />
+
+            <div class="modal-row">
+              <div class="field">
+                <label for="cat-modal-pt">Product Type <span class="required-star">*</span></label>
+                <select id="cat-modal-pt" required>
+                  <option value="">&mdash; Select &mdash;</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="cat-modal-brand">Brand <span class="required-star">*</span></label>
+                <select id="cat-modal-brand" required>
+                  <option value="">&mdash; Select &mdash;</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="modal-row">
+              <div class="field">
+                <label for="cat-modal-partnum">Part Number <span class="required-star">*</span></label>
+                <input type="text" id="cat-modal-partnum" placeholder="e.g. BRW-CR-190-24-0500" required />
+              </div>
+              <div class="field checkbox-field" style="padding-top:1.6rem">
+                <label><input type="checkbox" id="cat-modal-active" checked /> Active</label>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="cat-modal-desc">Description</label>
+              <input type="text" id="cat-modal-desc" placeholder="Optional free-text description" />
+            </div>
+
+            <hr class="form-divider" />
+            <p class="catalog-specs-header">Spec Values <span class="catalog-specs-hint">(leave blank to omit)</span></p>
+            <p id="cat-modal-specs-loading" class="hint">Select a product type to load spec fields.</p>
+            <div id="cat-modal-specs-grid" class="catalog-specs-grid"></div>
+
+            <p id="cat-modal-error" class="error-msg hidden"></p>
+            <div class="modal-actions">
+              <button type="button" id="cat-modal-cancel-btn" class="btn-modal-cancel">Cancel</button>
+              <button type="submit" id="cat-modal-save-btn" class="btn-modal-save">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
   <!-- ADMIN: CATALOG UPLOAD VIEW -->
   <div id="view-admin-upload" class="view hidden">
     <header class="app-header">
@@ -345,6 +456,7 @@
   <script src="js/request.js"></script>
   <script src="js/results.js"></script>
   <script src="js/admin-specs.js"></script>
+  <script src="js/admin-catalog.js"></script>
   <script src="js/admin-upload.js"></script>
   <script src="js/app.js"></script>
 </body>
