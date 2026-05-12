@@ -16,6 +16,8 @@ function setUserEmailAll(email) {
     'user-email-results',
     'user-email-admin-vendors',
     'user-email-admin-brands',
+    'user-email-admin-pt',
+    'user-email-admin-priority',
     'user-email-admin-specs',
     'user-email-admin-catalog',
     'user-email-admin-upload'
@@ -71,6 +73,8 @@ async function init() {
     'logout-btn-results',
     'logout-btn-admin-vendors',
     'logout-btn-admin-brands',
+    'logout-btn-admin-pt',
+    'logout-btn-admin-priority',
     'logout-btn-admin-specs',
     'logout-btn-admin-catalog',
     'logout-btn-admin-upload'
@@ -92,10 +96,7 @@ async function init() {
     await initRequestForm(productTypeId, productTypeName);
   });
 
-  // Back: Request → Selector
   document.getElementById('request-back-btn').addEventListener('click', () => showView('view-selector'));
-
-  // Back: Results → Selector
   document.getElementById('results-back-btn').addEventListener('click', () => showView('view-selector'));
 
   // Admin: Vendors
@@ -111,6 +112,20 @@ async function init() {
     await initAdminBrands();
   });
   document.getElementById('admin-brands-back-btn').addEventListener('click', () => showView('view-selector'));
+
+  // Admin: Product Types
+  document.getElementById('admin-pt-btn').addEventListener('click', async () => {
+    showView('view-admin-pt');
+    await initAdminProductTypes();
+  });
+  document.getElementById('admin-pt-back-btn').addEventListener('click', () => showView('view-selector'));
+
+  // Admin: Vendor Priority
+  document.getElementById('admin-priority-btn').addEventListener('click', async () => {
+    showView('view-admin-priority');
+    await initAdminPriority();
+  });
+  document.getElementById('admin-priority-back-btn').addEventListener('click', () => showView('view-selector'));
 
   // Admin: Spec Definitions
   document.getElementById('admin-specs-btn').addEventListener('click', async () => {
@@ -136,6 +151,8 @@ async function init() {
   // Bind modal + upload events
   bindAdminVendorsEvents();
   bindAdminBrandsEvents();
+  bindAdminProductTypesEvents();
+  bindAdminPriorityEvents();
   bindAdminSpecsModalEvents();
   bindAdminCatalogEvents();
   bindAdminUploadEvents();
@@ -147,6 +164,8 @@ function maybeShowAdminBtns(session) {
   [
     'admin-vendors-btn',
     'admin-brands-btn',
+    'admin-pt-btn',
+    'admin-priority-btn',
     'admin-catalog-btn',
     'admin-specs-btn',
     'admin-upload-btn'

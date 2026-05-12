@@ -36,6 +36,8 @@
         <span id="user-email" class="user-email"></span>
         <button id="admin-vendors-btn" class="btn-admin hidden">&#127968; Vendors</button>
         <button id="admin-brands-btn" class="btn-admin hidden">&#127991; Brands</button>
+        <button id="admin-pt-btn" class="btn-admin hidden">&#128209; Product Types</button>
+        <button id="admin-priority-btn" class="btn-admin hidden">&#127941; Vendor Priority</button>
         <button id="admin-catalog-btn" class="btn-admin hidden">&#128218; Catalog Items</button>
         <button id="admin-specs-btn" class="btn-admin hidden">&#9881; Spec Definitions</button>
         <button id="admin-upload-btn" class="btn-admin hidden">&#128230; Catalog Upload</button>
@@ -138,32 +140,23 @@
       </div>
     </header>
     <main class="admin-main">
-
       <div class="admin-toolbar">
         <button id="ven-add-btn" class="btn-action">+ Add Vendor</button>
       </div>
-
       <p id="ven-loading" class="hint">Loading&hellip;</p>
       <p id="ven-error" class="error-msg hidden"></p>
       <p id="ven-success" class="success-msg hidden"></p>
-
       <div id="ven-table-wrap" class="hidden">
         <table class="admin-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Contact</th>
-              <th>Email</th>
-              <th>Notes</th>
-              <th>Active</th>
+              <th>Name</th><th>Contact</th><th>Email</th><th>Notes</th><th>Active</th>
               <th class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody id="ven-tbody"></tbody>
         </table>
       </div>
-
-      <!-- Add / Edit modal -->
       <div id="ven-modal-overlay" class="modal-overlay hidden">
         <div class="modal-card">
           <h3 id="ven-modal-title">Add Vendor</h3>
@@ -198,7 +191,6 @@
           </form>
         </div>
       </div>
-
     </main>
   </div>
 
@@ -213,31 +205,23 @@
       </div>
     </header>
     <main class="admin-main">
-
       <div class="admin-toolbar">
         <button id="br-add-btn" class="btn-action">+ Add Brand</button>
       </div>
-
       <p id="br-loading" class="hint">Loading&hellip;</p>
       <p id="br-error" class="error-msg hidden"></p>
       <p id="br-success" class="success-msg hidden"></p>
-
       <div id="br-table-wrap" class="hidden">
         <table class="admin-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Primary Vendor</th>
-              <th>Notes</th>
-              <th>Active</th>
+              <th>Name</th><th>Primary Vendor</th><th>Notes</th><th>Active</th>
               <th class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody id="br-tbody"></tbody>
         </table>
       </div>
-
-      <!-- Add / Edit modal -->
       <div id="br-modal-overlay" class="modal-overlay hidden">
         <div class="modal-card">
           <h3 id="br-modal-title">Add Brand</h3>
@@ -249,9 +233,7 @@
             </div>
             <div class="field">
               <label for="br-modal-vendor">Primary Vendor</label>
-              <select id="br-modal-vendor">
-                <option value="">&mdash; None &mdash;</option>
-              </select>
+              <select id="br-modal-vendor"><option value="">&mdash; None &mdash;</option></select>
             </div>
             <div class="field">
               <label for="br-modal-notes">Notes</label>
@@ -268,7 +250,134 @@
           </form>
         </div>
       </div>
+    </main>
+  </div>
 
+  <!-- ADMIN: PRODUCT TYPES VIEW -->
+  <div id="view-admin-pt" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher &mdash; Product Types</span>
+      <div class="header-right">
+        <button id="admin-pt-back-btn" class="btn-secondary">&larr; Back</button>
+        <span id="user-email-admin-pt" class="user-email"></span>
+        <button id="logout-btn-admin-pt" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="admin-main">
+      <div class="admin-toolbar">
+        <button id="pt-add-btn" class="btn-action">+ Add Product Type</button>
+      </div>
+      <p id="pt-loading" class="hint">Loading&hellip;</p>
+      <p id="pt-error" class="error-msg hidden"></p>
+      <p id="pt-success" class="success-msg hidden"></p>
+      <div id="pt-table-wrap" class="hidden">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Category</th><th>Name</th><th>Description</th><th>Active</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pt-tbody"></tbody>
+        </table>
+      </div>
+      <div id="pt-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-card">
+          <h3 id="pt-modal-title">Add Product Type</h3>
+          <form id="pt-modal-form" novalidate>
+            <input type="hidden" id="pt-modal-id" />
+            <div class="field">
+              <label for="pt-modal-category">Category <span class="required-star">*</span></label>
+              <select id="pt-modal-category" required><option value="">&mdash; Select &mdash;</option></select>
+            </div>
+            <div class="field">
+              <label for="pt-modal-name">Name <span class="required-star">*</span></label>
+              <input type="text" id="pt-modal-name" placeholder="e.g. Conveyor Roller" required />
+            </div>
+            <div class="field">
+              <label for="pt-modal-desc">Description</label>
+              <input type="text" id="pt-modal-desc" placeholder="Optional" />
+            </div>
+            <div class="field checkbox-field">
+              <label><input type="checkbox" id="pt-modal-active" checked /> Active</label>
+            </div>
+            <p id="pt-modal-error" class="error-msg hidden"></p>
+            <div class="modal-actions">
+              <button type="button" id="pt-modal-cancel-btn" class="btn-modal-cancel">Cancel</button>
+              <button type="submit" id="pt-modal-save-btn" class="btn-modal-save">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ADMIN: VENDOR ITEM PRIORITY VIEW -->
+  <div id="view-admin-priority" class="view hidden">
+    <header class="app-header">
+      <span class="app-title">Parts Spec Matcher &mdash; Vendor Priority</span>
+      <div class="header-right">
+        <button id="admin-priority-back-btn" class="btn-secondary">&larr; Back</button>
+        <span id="user-email-admin-priority" class="user-email"></span>
+        <button id="logout-btn-admin-priority" class="btn-secondary">Sign Out</button>
+      </div>
+    </header>
+    <main class="admin-main">
+      <div class="admin-toolbar">
+        <div class="admin-filter-group">
+          <label for="prio-filter-pt">Product Type</label>
+          <select id="prio-filter-pt"><option value="">All Product Types</option></select>
+        </div>
+        <button id="prio-add-btn" class="btn-action">+ Add Rule</button>
+      </div>
+      <p id="prio-loading" class="hint">Loading&hellip;</p>
+      <p id="prio-error" class="error-msg hidden"></p>
+      <p id="prio-success" class="success-msg hidden"></p>
+      <div id="prio-table-wrap" class="hidden">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Product Type</th><th>Vendor</th><th>Brand</th>
+              <th>Rank</th><th>Notes</th>
+              <th class="col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="prio-tbody"></tbody>
+        </table>
+      </div>
+      <div id="prio-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-card">
+          <h3 id="prio-modal-title">Add Priority Rule</h3>
+          <form id="prio-modal-form" novalidate>
+            <input type="hidden" id="prio-modal-id" />
+            <div class="field">
+              <label for="prio-modal-vendor">Vendor <span class="required-star">*</span></label>
+              <select id="prio-modal-vendor" required><option value="">&mdash; Select &mdash;</option></select>
+            </div>
+            <div class="field">
+              <label for="prio-modal-pt">Product Type <span class="required-star">*</span></label>
+              <select id="prio-modal-pt" required><option value="">&mdash; Select &mdash;</option></select>
+            </div>
+            <div class="field">
+              <label for="prio-modal-brand">Brand <span style="font-weight:normal;color:#888">(optional &mdash; leave blank to apply to all brands)</span></label>
+              <select id="prio-modal-brand"><option value="">&mdash; Any brand &mdash;</option></select>
+            </div>
+            <div class="field">
+              <label for="prio-modal-rank">Priority Rank <span class="required-star">*</span></label>
+              <input type="number" id="prio-modal-rank" min="1" placeholder="e.g. 1" required />
+            </div>
+            <div class="field">
+              <label for="prio-modal-notes">Notes</label>
+              <input type="text" id="prio-modal-notes" placeholder="Optional" />
+            </div>
+            <p id="prio-modal-error" class="error-msg hidden"></p>
+            <div class="modal-actions">
+              <button type="button" id="prio-modal-cancel-btn" class="btn-modal-cancel">Cancel</button>
+              <button type="submit" id="prio-modal-save-btn" class="btn-modal-save">Save</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -283,46 +392,32 @@
       </div>
     </header>
     <main class="admin-main">
-
       <div class="admin-toolbar">
         <div class="admin-filter-group">
           <label for="admin-category-filter">Category</label>
-          <select id="admin-category-filter">
-            <option value="">All Categories</option>
-          </select>
+          <select id="admin-category-filter"><option value="">All Categories</option></select>
         </div>
         <div class="admin-filter-group">
           <label for="admin-pt-filter">Product Type</label>
-          <select id="admin-pt-filter">
-            <option value="">All Product Types</option>
-          </select>
+          <select id="admin-pt-filter"><option value="">All Product Types</option></select>
         </div>
         <button id="admin-add-spec-btn" class="btn-action">+ Add Spec</button>
       </div>
-
       <p id="admin-specs-loading" class="hint">Loading&hellip;</p>
       <p id="admin-specs-error" class="error-msg hidden"></p>
       <p id="admin-specs-success" class="success-msg hidden"></p>
-
       <div id="admin-specs-table-wrap" class="hidden">
         <table class="admin-table" id="admin-specs-table">
           <thead>
             <tr>
-              <th class="col-order">Order</th>
-              <th>Product Type</th>
-              <th>Field Name</th>
-              <th>Display Label</th>
-              <th>Match Type</th>
-              <th>Unit</th>
-              <th>Required</th>
-              <th>Active</th>
-              <th class="col-actions">Actions</th>
+              <th class="col-order">Order</th><th>Product Type</th><th>Field Name</th>
+              <th>Display Label</th><th>Match Type</th><th>Unit</th>
+              <th>Required</th><th>Active</th><th class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody id="admin-specs-tbody"></tbody>
         </table>
       </div>
-
       <div id="spec-modal-overlay" class="modal-overlay hidden">
         <div class="modal-card">
           <h3 id="spec-modal-title">Add Spec Definition</h3>
@@ -330,9 +425,7 @@
             <input type="hidden" id="modal-spec-id" />
             <div class="field">
               <label for="modal-pt">Product Type <span class="required-star">*</span></label>
-              <select id="modal-pt" required>
-                <option value="">&mdash; Select &mdash;</option>
-              </select>
+              <select id="modal-pt" required><option value="">&mdash; Select &mdash;</option></select>
             </div>
             <div class="field">
               <label for="modal-name">Field Name (snake_case) <span class="required-star">*</span></label>
@@ -353,9 +446,7 @@
               </div>
               <div class="field">
                 <label for="modal-unit">Unit</label>
-                <select id="modal-unit">
-                  <option value="">-- none --</option>
-                </select>
+                <select id="modal-unit"><option value="">-- none --</option></select>
               </div>
             </div>
             <div class="modal-row">
@@ -374,7 +465,6 @@
           </form>
         </div>
       </div>
-
     </main>
   </div>
 
@@ -389,50 +479,36 @@
       </div>
     </header>
     <main class="admin-main">
-
       <div class="admin-toolbar">
         <div class="admin-filter-group">
           <label for="cat-filter-cat">Category</label>
-          <select id="cat-filter-cat">
-            <option value="">All Categories</option>
-          </select>
+          <select id="cat-filter-cat"><option value="">All Categories</option></select>
         </div>
         <div class="admin-filter-group">
           <label for="cat-filter-pt">Product Type</label>
-          <select id="cat-filter-pt">
-            <option value="">All Product Types</option>
-          </select>
+          <select id="cat-filter-pt"><option value="">All Product Types</option></select>
         </div>
         <div class="admin-filter-group">
           <label for="cat-filter-brand">Brand</label>
-          <select id="cat-filter-brand">
-            <option value="">All Brands</option>
-          </select>
+          <select id="cat-filter-brand"><option value="">All Brands</option></select>
         </div>
         <button id="cat-add-btn" class="btn-action">+ Add Item</button>
       </div>
-
       <p id="cat-loading" class="hint">Loading&hellip;</p>
       <p id="cat-error" class="error-msg hidden"></p>
       <p id="cat-success" class="success-msg hidden"></p>
-
       <div id="cat-table-wrap" class="hidden">
         <table class="admin-table" id="cat-table">
           <thead>
             <tr>
-              <th>Product Type</th>
-              <th>Brand</th>
-              <th>Part Number</th>
-              <th>Description</th>
-              <th>Specs</th>
-              <th>Active</th>
+              <th>Product Type</th><th>Brand</th><th>Part Number</th>
+              <th>Description</th><th>Specs</th><th>Active</th>
               <th class="col-actions">Actions</th>
             </tr>
           </thead>
           <tbody id="cat-tbody"></tbody>
         </table>
       </div>
-
       <div id="cat-modal-overlay" class="modal-overlay hidden">
         <div class="modal-card catalog-modal-card">
           <h3 id="cat-modal-title">Add Catalog Item</h3>
@@ -441,15 +517,11 @@
             <div class="modal-row">
               <div class="field">
                 <label for="cat-modal-pt">Product Type <span class="required-star">*</span></label>
-                <select id="cat-modal-pt" required>
-                  <option value="">&mdash; Select &mdash;</option>
-                </select>
+                <select id="cat-modal-pt" required><option value="">&mdash; Select &mdash;</option></select>
               </div>
               <div class="field">
                 <label for="cat-modal-brand">Brand <span class="required-star">*</span></label>
-                <select id="cat-modal-brand" required>
-                  <option value="">&mdash; Select &mdash;</option>
-                </select>
+                <select id="cat-modal-brand" required><option value="">&mdash; Select &mdash;</option></select>
               </div>
             </div>
             <div class="modal-row">
@@ -477,7 +549,6 @@
           </form>
         </div>
       </div>
-
     </main>
   </div>
 
@@ -492,12 +563,10 @@
       </div>
     </header>
     <main class="admin-main">
-
       <div class="upload-intro">
         <h2>CSV Bulk Upload &mdash; Catalog Items</h2>
         <p class="hint">Upload two CSV files to batch-insert or update catalog items and their spec values. Download the templates below to get started.</p>
       </div>
-
       <div class="upload-section">
         <h3 class="upload-section-title">Step 1 &mdash; Download Templates</h3>
         <div class="template-cards">
@@ -519,10 +588,9 @@
           </div>
         </div>
       </div>
-
       <div class="upload-section">
         <h3 class="upload-section-title">Step 2 &mdash; Upload Your Files</h3>
-        <p class="hint" style="margin-bottom:1rem">Upload <strong>catalog_items</strong> first, then <strong>catalog_item_specs</strong>. Both files are validated before any rows are inserted. Re-uploading an existing part number + brand combination will update that item.</p>
+        <p class="hint" style="margin-bottom:1rem">Upload <strong>catalog_items</strong> first, then <strong>catalog_item_specs</strong>. Both files are validated before any rows are inserted.</p>
         <div class="upload-panels">
           <div class="upload-panel">
             <div class="upload-panel-header">
@@ -536,9 +604,7 @@
             </label>
             <div id="items-preview-wrap" class="preview-wrap hidden">
               <p class="preview-label">Preview (<span id="items-preview-count"></span> rows)</p>
-              <div class="preview-scroll">
-                <table class="preview-table" id="items-preview-table"></table>
-              </div>
+              <div class="preview-scroll"><table class="preview-table" id="items-preview-table"></table></div>
             </div>
             <p id="items-validate-msg" class="upload-validate-msg hidden"></p>
           </div>
@@ -554,26 +620,21 @@
             </label>
             <div id="specs-preview-wrap" class="preview-wrap hidden">
               <p class="preview-label">Preview (<span id="specs-preview-count"></span> rows)</p>
-              <div class="preview-scroll">
-                <table class="preview-table" id="specs-preview-table"></table>
-              </div>
+              <div class="preview-scroll"><table class="preview-table" id="specs-preview-table"></table></div>
             </div>
             <p id="specs-validate-msg" class="upload-validate-msg hidden"></p>
           </div>
         </div>
       </div>
-
       <div class="upload-section upload-action-row">
         <button id="upload-run-btn" class="btn-primary upload-run-btn" disabled>&#8593; Run Upload</button>
         <p id="upload-global-error" class="error-msg hidden"></p>
         <p id="upload-global-success" class="success-msg hidden"></p>
       </div>
-
       <div id="upload-log-wrap" class="upload-section hidden">
         <h3 class="upload-section-title">Upload Log</h3>
         <div id="upload-log" class="upload-log"></div>
       </div>
-
     </main>
   </div>
 
@@ -585,6 +646,8 @@
   <script src="js/results.js"></script>
   <script src="js/admin-vendors.js"></script>
   <script src="js/admin-brands.js"></script>
+  <script src="js/admin-product-types.js"></script>
+  <script src="js/admin-priority.js"></script>
   <script src="js/admin-specs.js"></script>
   <script src="js/admin-catalog.js"></script>
   <script src="js/admin-upload.js"></script>
