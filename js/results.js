@@ -28,18 +28,18 @@ function renderResults(results, productTypeName) {
 
   tableBody.innerHTML = '';
   results.forEach((row, i) => {
-    const score = parseFloat(row.out_match_score || 0);
+    const score = parseFloat(row.out_score || 0);
     const misses = row.out_match_notes || '\u2014';
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td class="rank-cell">${i + 1}</td>
+      <td class="rank-cell">${row.out_rank ?? i + 1}</td>
       <td>${row.out_brand || '\u2014'}</td>
       <td class="mono">${row.out_part_number || '\u2014'}</td>
       <td>
         <span class="score-label">${score.toFixed(1)}</span>
         ${scoreBar(score)}
       </td>
-      <td class="priority-cell">${row.out_vendor_priority_rank ?? '\u2014'}</td>
+      <td class="priority-cell">${row.out_vendor_priority ?? '\u2014'}</td>
       <td class="miss-cell">${misses}</td>
     `;
     tableBody.appendChild(tr);
