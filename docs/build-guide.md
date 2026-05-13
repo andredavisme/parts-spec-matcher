@@ -1,239 +1,401 @@
-# Build Guide: Web App Development with Perplexity, Supabase & GitHub
+# Parts Spec Matcher — Developer Training Guide
 
-This document serves as a reusable educational reference for the process used to scaffold, document, and build this application. It captures the methodology so that it can be repeated for future projects or taught to others.
+A Living Textbook for Operations Code Writers, Managers, and Contributors
 
 ---
 
-## The Process
+> **How to use this guide:** This is not a reference document to skim once and shelve. It is a school you return to. Each part introduces concepts at ground level, then builds on them. Hands-on exercises are embedded throughout — look for the 🧪 **Try It** sections. When something in the codebase changes, this guide changes too.
 
-This project was built using a three-platform workflow:
+---
+
+## Part I — The World You're Working In
+
+### Chapter 1: What Is the Parts Spec Matcher?
+
+The Parts Spec Matcher is an internal sales tool built for an industrial machine parts distributor. When a customer needs a part, a sales representative uses this app to look up what specifications are needed, enter the customer's values, and get ranked matches from the product catalog — in seconds, instead of hunting through multiple brand catalogs by hand.
+
+The three platforms this system lives on:
 
 | Platform | Role |
 |---|---|
-| **Perplexity** | AI assistant — architecture decisions, documentation generation, code generation, schema design, debugging |
-| **Supabase** | Backend — PostgreSQL database, authentication, edge functions, API layer |
-| **GitHub** | Version control — repository, documentation, code, and progress tracking |
+| **GitHub** | Source control — all code, documentation, and migrations live here (`andredavisme/parts-spec-matcher`) |
+| **Supabase** | Backend — PostgreSQL database, authentication, RLS, and API layer |
+| **GitHub Pages** | Frontend — the browser-based app sales reps actually use |
+
+Everything the app does eventually touches all three. A spec definition lives in the database. The form that collects it lives on GitHub Pages. The migration that created its table lives in the repo.
 
 ---
 
-## Step-by-Step Setup
+🧪 **Try It 1.1 — Orient Yourself**
 
-### Step 1 — Create a Perplexity Space
-- Create a new Space in Perplexity
-- Spaces allow you to maintain persistent context across conversations for a single project
-- Name the Space after the project so conversations stay organized
+Without clicking anything yet, answer these questions in writing:
 
-### Step 2 — Connect a Supabase Account
-- Link your Supabase account to Perplexity via the Supabase MCP integration
-- This gives Perplexity direct access to list projects, apply migrations, execute SQL, manage edge functions, and run advisors
-- Identify which Supabase project will be used and confirm the project ID
-- If the project is shared with other schemas, confirm the isolated schema name to be used (e.g., `parts_matcher`)
+1. If you wanted to change the label on a spec field, which platform's code would you edit?
+2. If you wanted to add a new product type, which platform would you work in first?
+3. If a sales rep can't log in, which platform handles authentication?
 
-### Step 3 — Connect a GitHub Account
-- Link your GitHub account to Perplexity via the GitHub MCP integration
-- This gives Perplexity direct access to create repositories, push files, manage branches, and track issues
-- Confirm the GitHub username so the correct account is targeted
-
-### Step 4 — Write the Setup Prompt
-
-The setup prompt is the single most important input. It defines everything Perplexity needs to scaffold the project. It should contain four sections:
+Check your answers against the table in Chapter 1. If any were wrong, re-read before moving on.
 
 ---
 
-#### Section 1: The Idea
+## Part II — Git and GitHub
 
-Describe what the app does in plain language. Include:
-- Who the business is
-- What problem is being solved
-- What the app will allow users to do
-- Any relevant external references (e.g., product catalog URLs)
+### Chapter 2: Why Version Control Exists
 
-**Example:**
+Imagine saving a file as `app_final.js`, then `app_final_v2.js`, then `app_ACTUAL_FINAL.js`. Now imagine five people doing that to the same codebase. Version control solves this. Every change is tracked. Every person's work is isolated until it's ready to merge. Every mistake can be undone.
+
+Git is the tool. GitHub is the platform that hosts it and makes it collaborative.
+
+The core concept: a **repository (repo)** is a folder that Git watches. Every time you save a meaningful change, you create a **commit** — a snapshot of the code at that moment, with a message explaining what changed and why.
+
+### Chapter 3: The Repo Structure
+
 ```
-We're going to build an app for an industrial machine parts distributor. We sell the categories 
-of products shown at https://www.easternia.com/products. The app will allow users to reference 
-part spec requirements for types of products (dimensions, ratings, etc as appropriate to the 
-product). Users will also be able to enter spec information to generate potential item matches.
+parts-spec-matcher/
+├── README.md                  ← What this project is and how to use it
+├── docs/
+│   ├── build-guide.md         ← This document
+│   ├── progress-tracker.md    ← Living milestone log
+│   ├── product-objective.md   ← Business problem and scope
+│   ├── data-architecture.md   ← Schema design and data rules
+│   └── quote-workflow.md      ← End-to-end workflow walkthrough
+└── (migrations live in Supabase — tracked via apply_migration)
 ```
+
+The `gh-pages` branch holds the frontend:
+
+```
+gh-pages branch/
+├── index.html                 ← Single-page app (all views)
+├── css/styles.css
+└── js/
+    ├── app.js                 ← View routing, session, login/logout, admin gate
+    ├── config.js              ← Supabase client initialization
+    ├── auth.js                ← Sign in / sign out helpers
+    ├── selector.js            ← Product type cascade loader
+    ├── request.js             ← Template loader, dynamic form, match trigger
+    ├── results.js             ← Ranked results table renderer
+    ├── admin-vendors.js
+    ├── admin-brands.js
+    ├── admin-product-types.js
+    ├── admin-priority.js
+    ├── admin-catalog.js
+    ├── admin-specs.js
+    └── admin-upload.js
+```
+
+### Chapter 4: The Commit Workflow
+
+Every change to the codebase follows this pattern:
+
+1. **Branch** — create a separate working copy so your changes don't affect `main` yet
+2. **Edit** — make your changes
+3. **Commit** — save a snapshot with a clear message
+4. **Push** — upload your branch to GitHub
+5. **Pull Request (PR)** — ask for your changes to be reviewed and merged
+6. **Merge** — after approval, the changes become part of the official codebase
+
+Commit message format used on this project:
+
+```
+<type>: <short description>
+
+Types:
+  feat      — new feature or capability
+  fix       — bug fix
+  docs      — documentation only
+  schema    — database migration or schema change
+  chore     — maintenance, dependency updates
+  refactor  — code restructuring without behavior change
+```
+
+Examples of **good** commit messages:
+
+```
+feat: add CSV bulk upload for catalog items
+schema: add brand_id to vendor_item_priority table
+fix: correct security_invoker on pm_* wrapper views
+docs: update training guide with Chapter 4 commit workflow
+```
+
+Examples of **bad** commit messages:
+
+```
+update
+fix stuff
+changes
+wip
+```
+
+A commit message is a letter to the future person who needs to understand what happened here. That person is often you, six months from now.
 
 ---
 
-#### Section 2: The User Story
+🧪 **Try It 2.1 — Read a Commit History**
 
-Describe the core workflow from the perspective of a real user. Walk through a specific scenario end-to-end. Include:
-- Who the user is (role)
-- What triggers the workflow
-- Each action the user takes
-- What the system returns
-- Any backend roles (e.g., database administrator)
-- The stated objective (the "why")
+Go to [`andredavisme/parts-spec-matcher`](https://github.com/andredavisme/parts-spec-matcher) on GitHub. Click the **Commits** tab. Read the last 10 commit messages.
 
-**Example:**
-```
-Consider the platform story from a sales representative's perspective who is responding to a 
-customer request for a conveyor roller. The customer wants to know what information they need 
-to provide. The sales representative uses the app to generate a document that shows what is 
-needed to appropriately quote a conveyor roller. The customer responds with the information. 
-The sales representative enters the values into the app and the app returns potential matches. 
-All data references are stored in a backend database maintained by a database administrator 
-through appropriate tools to ensure data integrity. Data will originally be sourced from 
-public-facing catalogs supplied by the brands we supply. The database will be a repository 
-for vendor relationships to consider priority selection when multiple brands offer a similar 
-product. The objective is to reduce the redundant effort of researching multiple locations 
-for quote information that can be consolidated and more easily processed.
-```
+Ask yourself:
+- Can you tell what changed in each commit without opening the diff?
+- Are any messages vague? What would you have written instead?
+- Which commits touch the database vs. the frontend UI?
 
 ---
 
-#### Section 3: Repo & Supabase Targets
+🧪 **Try It 2.2 — Your First Branch and Commit**
 
-Tell Perplexity exactly where to build:
-- Whether to create a new GitHub repo or use an existing one
-- The repo name and visibility (public/private)
-- Which Supabase project to use (by name or ID)
-- The schema name to isolate this project's data
+1. Create a branch called `training/your-name-notes`
+2. Add a file called `docs/notes/your-name.md`
+3. Write three things you learned from Chapters 1–3 in your own words
+4. Commit with the message: `docs: add personal notes from training part 1`
+5. Open a Pull Request — **do NOT merge it yet**
 
-**Example:**
-```
-Create a new private GitHub repo under andredavisme. Use the andredavisme's Project in 
-Supabase to create the schema. Keep this schema separate from the others.
-```
+This is practice. The PR will be reviewed as a checkpoint.
 
 ---
 
-#### Section 4: Progress Update Document
+## Part III — The Database
 
-Request a living milestone tracker be included in the repo. Specify:
-- That it is a living document updated throughout development
-- What each milestone entry must contain
-- Who the audience is (developer handoff, chunked work sessions)
+### Chapter 5: What Is a Relational Database?
 
-**Example:**
+A database is an organized collection of data. A **relational database** organizes that data into **tables** — like spreadsheets — where each table stores one kind of thing, and tables relate to each other through shared IDs.
+
+This project's database is **PostgreSQL**, hosted on Supabase. All spec definitions, catalog items, vendor data, and customer requests live here.
+
+A table looks like this:
+
 ```
-Include a progress update document in the repo where we will record milestones and track 
-development. Each milestone will reference the work previously done, dependencies for 
-progression, the work completed with the errors and fixes that were implemented during 
-development of the milestone, and the next steps in development. A developer will be able 
-to reference this so that they can work in chunks or hand off progression.
+vendors
+┌────┬──────────────────────────────┬───────────────────────────┬───────────┐
+│ id │ name                         │ contact_email             │ is_active │
+├────┼──────────────────────────────┼───────────────────────────┼───────────┤
+│  1 │ Eastern Industrial Automation│ sales@easternia.com       │ true      │
+└────┴──────────────────────────────┴───────────────────────────┴───────────┘
 ```
 
+Each row is one vendor. The `id` column is the **primary key** — a unique number that identifies this row across the entire database.
+
+### Chapter 6: SQL — The Language of Databases
+
+SQL (Structured Query Language) is how you talk to a relational database.
+
+The four most common operations:
+
+```sql
+-- Read data
+SELECT name, is_active FROM parts_matcher.brands WHERE is_active = true;
+
+-- Add data
+INSERT INTO parts_matcher.vendors (name, is_active)
+VALUES ('New Distributor Co', true);
+
+-- Update data
+UPDATE parts_matcher.vendors SET contact_email = 'info@example.com' WHERE id = 1;
+
+-- Remove data (use is_active = false instead where possible — see Chapter 7)
+DELETE FROM parts_matcher.vendors WHERE id = 99;
+```
+
+The **JOIN** — connecting two tables:
+
+If you want to see all catalog items and the brand name they belong to:
+
+```sql
+SELECT
+  ci.part_number,
+  ci.description,
+  b.name AS brand_name
+FROM parts_matcher.catalog_items ci
+JOIN parts_matcher.brands b ON ci.brand_id = b.id
+WHERE ci.is_active = true;
+```
+
+This works because `catalog_items.brand_id` stores the `id` from the `brands` table. That link is called a **foreign key**.
+
+### Chapter 7: The `parts_matcher` Schema
+
+All tables for this project live in the `parts_matcher` schema — a named namespace inside the shared Supabase PostgreSQL instance, kept separate from other projects.
+
+**Reference / Lookup Tables** (controlled vocabulary — admin-only writes)
+
+```sql
+spec_units           -- inches, mm, lbs, RPM, etc.
+product_categories   -- Bearings, Chain & Sprockets, etc.
+product_types        -- Deep Groove Ball Bearing, Roller Chain, etc.
+vendors              -- Eastern Industrial Automation, etc.
+brands               -- SKF, Dodge, Browning, etc.
+spec_definitions     -- What fields belong to each product type (match_type: exact/range/nearest)
+```
+
+**Catalog Tables** (the inventory data)
+
+```sql
+source_documents     -- Where catalog data came from (brand PDF, manual entry, etc.)
+catalog_items        -- Individual parts: brand, part number, description
+catalog_item_specs   -- Spec values for each item (value_numeric or value_text)
+vendor_item_priority -- Which vendor/brand to prefer when multiple options match
+```
+
+**Workflow Tables** (live sales transactions)
+
+```sql
+quote_templates       -- One template per product type
+quote_template_fields -- Which spec fields appear on each template
+customer_requests     -- A customer's inquiry (product type + rep info)
+request_spec_values   -- The spec values the customer provided
+match_results         -- The ranked catalog matches returned by run_match()
+```
+
+> **Soft Deletes:** Reference and catalog tables use an `is_active boolean` flag rather than hard deletes. This preserves referential integrity — a brand that's been used on a catalog item can never be truly deleted without breaking those records. Set `is_active = false` to retire it.
+
 ---
 
-## What Perplexity Produces
+🧪 **Try It 3.1 — Explore the Schema**
 
-From a well-formed setup prompt, Perplexity will:
+Open the Supabase SQL Editor for this project. Run each of these one at a time. Read the result before running the next.
 
-1. Fetch any referenced URLs for context (product catalogs, existing sites, etc.)
-2. Identify the correct Supabase project and confirm its ID
-3. Identify the GitHub account and create or target the specified repository
-4. Push a full documentation suite to the repo in a single commit:
-   - `README.md` — project overview, user roles, workflow summary, tech stack
-   - `docs/product-objective.md` — business problem, scope, success criteria
-   - `docs/data-architecture.md` — schema design, entities, vendor logic, integrity rules
-   - `docs/quote-workflow.md` — end-to-end workflow with a worked example
-   - `docs/progress-tracker.md` — living milestone log with full handoff structure
-   - `docs/build-guide.md` — this document
-5. Record Milestone 0 (Project Initialization) as complete in the progress tracker
-6. Define all forward milestones with dependencies and next steps
+```sql
+-- 1. What tables exist in parts_matcher?
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'parts_matcher'
+ORDER BY table_name;
 
----
+-- 2. What does spec_definitions look like?
+SELECT column_name, data_type
+FROM information_schema.columns
+WHERE table_schema = 'parts_matcher'
+  AND table_name = 'spec_definitions'
+ORDER BY ordinal_position;
 
-## Migration Conventions
+-- 3. How many spec definitions exist per product type?
+SELECT pt.name AS product_type, COUNT(sd.id) AS spec_count
+FROM parts_matcher.spec_definitions sd
+JOIN parts_matcher.product_types pt ON sd.product_type_id = pt.id
+WHERE sd.is_active = true
+GROUP BY pt.name
+ORDER BY spec_count DESC;
+```
 
-Database schema changes are applied via Supabase's `apply_migration` tool, which tracks each migration by name in the `supabase_migrations` table. The following conventions are used on this project:
-
-- **Naming:** `snake_case`, descriptive of the scope — e.g., `create_parts_matcher_schema_and_reference_tables`
-- **Grouping:** Related tables are batched into a single migration (e.g., all reference tables together, all workflow tables together)
-- **Separation of concerns:** DDL (schema creation) is always a separate migration from RLS policies. This makes it easier to re-apply or audit security changes independently.
-- **Seed data:** Initial seed data is applied via `execute_sql` (not `apply_migration`) since it is not structural DDL and may be updated by administrators over time
-- **Idempotency:** All seed inserts use `ON CONFLICT DO NOTHING` so they can be safely re-run
-- **Audit columns:** Every mutable table includes `created_at`, `updated_at`, and `created_by` columns
-- **Soft deletes:** Reference and catalog tables use an `is_active boolean` flag rather than hard deletes to preserve relational integrity
+You are not changing anything — this is read-only exploration.
 
 ---
 
-## Role-Based Access Pattern
+🧪 **Try It 3.2 — Write a Join**
 
-This project uses **JWT `app_metadata` claims** to control access, rather than a separate Supabase role or a dedicated admin table. This pattern works well for internal tools on a shared Supabase project where creating custom database roles is impractical.
+Write a query that answers: *"Show me all active catalog items, their part number, and the name of the brand they belong to."*
 
-### Role Claim Design
+Start with this skeleton and fill in the blanks:
 
-Each user carries a single `parts_matcher_role` string claim in their JWT `app_metadata`. Current valid values:
+```sql
+SELECT
+  ci.______,
+  ci.description,
+  b.______ AS brand_name
+FROM parts_matcher.catalog_items ci
+JOIN _______ b ON ci._______ = b.id
+WHERE ci.is_active = true;
+```
 
-| Claim Value | Role | Access Level |
+A correct query on a small table returns a short list without error.
+
+---
+
+### Chapter 8: Migrations — How the Schema Changes Over Time
+
+You never change a production database by hand. Every structural change — adding a table, adding a column, changing a constraint — is applied as a **migration** via Supabase's `apply_migration` tool, which records it by name in `supabase_migrations.schema_migrations`.
+
+Naming convention used on this project:
+
+```
+parts_matcher_<description_in_snake_case>
+
+Examples:
+  parts_matcher_get_role_helper
+  parts_matcher_role_based_rls
+  parts_matcher_quote_templates_all_product_types
+```
+
+A migration looks like this:
+
+```sql
+-- Migration: parts_matcher_add_notes_to_vendors
+-- Purpose: Add an optional notes field to the vendors table
+
+ALTER TABLE parts_matcher.vendors
+ADD COLUMN IF NOT EXISTS notes TEXT;
+```
+
+**The rule:** Once a migration is applied to production, it is never edited. If something needs to change, you write a new migration that makes that change. The history must always be accurate.
+
+**Separation of concerns:** DDL (table structure) is always a separate migration from RLS policies. This makes it easier to re-apply or audit security changes independently.
+
+---
+
+🧪 **Try It 3.3 — Write a Migration**
+
+Write a migration that adds a `phone` column (type: `TEXT`, nullable) to `parts_matcher.vendors`.
+
+Include:
+- A comment at the top explaining what it does and why
+- `IF NOT EXISTS` so it's safe to re-run
+
+Run it in the **Supabase SQL Editor** to confirm it works without error. Do **not** apply it to production without review.
+
+---
+
+## Part IV — Security and Access Control
+
+### Chapter 9: Row-Level Security (RLS)
+
+In most databases, access to a table means access to all rows. Supabase's **Row-Level Security (RLS)** goes further: even within a table, each user can only see and edit the rows they are permitted to — enforced by policies written in SQL.
+
+This project uses **JWT `app_metadata` claims** for role-based access. Each user carries a single `parts_matcher_role` string claim in their token.
+
+| Claim Value | Role | Access |
 |---|---|---|
-| `app_maintenance` | App Maintenance | Full admin / DBA tooling; read-only on workflow tables; cannot run quote workflow |
-| `inside_sales` | Inside Sales Rep | Run quote workflow; view own requests and match results |
+| `app_maintenance` | App Maintenance | Full admin / DBA tooling; read-only on workflow tables |
+| `inside_sales` | Inside Sales Rep | Run quote workflow; view own requests and results |
 | `outside_sales` | Outside Sales Rep | Same as inside_sales |
-| `branch_manager` | Branch Manager | Same as sales; branch-wide request visibility (deferred — requires branch scoping) |
+| `branch_manager` | Branch Manager | Same as sales; branch-wide visibility (deferred) |
 
-Future roles reserved but not yet implemented: `regional_manager`, `accounting`, `customer`.
-
-### Helper Functions
-
-Three helper functions live in the `parts_matcher` schema and are used by RLS policies:
+**Three helper functions** live in `parts_matcher` and are used by all RLS policies:
 
 ```sql
--- Returns the raw role claim string from the JWT
-CREATE OR REPLACE FUNCTION parts_matcher.get_role()
-  RETURNS text LANGUAGE sql STABLE SECURITY DEFINER
-  SET search_path TO 'parts_matcher'
-AS $$
-  SELECT coalesce(
-    auth.jwt() -> 'app_metadata' ->> 'parts_matcher_role',
-    ''
-  );
-$$;
+-- Returns the role claim from the user's JWT
+parts_matcher.get_role()   → text
 
--- Returns true for app_maintenance (admin / DBA tooling access)
-CREATE OR REPLACE FUNCTION parts_matcher.is_admin()
-  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
-  SET search_path TO 'parts_matcher'
-AS $$
-  SELECT parts_matcher.get_role() = 'app_maintenance';
-$$;
+-- Returns true for app_maintenance users
+parts_matcher.is_admin()   → boolean
 
--- Returns true for sales roles (quote workflow access)
-CREATE OR REPLACE FUNCTION parts_matcher.is_sales()
-  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
-  SET search_path TO 'parts_matcher'
-AS $$
-  SELECT parts_matcher.get_role() IN ('inside_sales', 'outside_sales', 'branch_manager');
-$$;
+-- Returns true for inside_sales, outside_sales, branch_manager
+parts_matcher.is_sales()   → boolean
 ```
 
-### RLS Policy Pattern
+An example policy using these helpers:
 
-RLS policies on `parts_matcher` tables use these helpers in their `USING` and `WITH CHECK` clauses:
-
-- **Reference/catalog tables** (vendors, brands, product types, spec definitions, catalog items, etc.): all authenticated users can SELECT; only `app_maintenance` can INSERT/UPDATE/DELETE
-- **Workflow tables** (customer_requests, request_spec_values, match_results): only `is_sales()` users can INSERT and SELECT; `app_maintenance` has read-only SELECT
-
-### Granting a Role
-
-In the Supabase dashboard:
-1. Go to **Authentication → Users**
-2. Select the user
-3. Edit **App Metadata** and add:
-   ```json
-   { "parts_matcher_role": "app_maintenance" }
-   ```
-   (or the appropriate role value for that user)
-4. The user must sign out and back in for the new claim to appear in their JWT
-
-Alternatively, via SQL:
 ```sql
-UPDATE auth.users
-SET raw_app_meta_data = raw_app_meta_data || '{"parts_matcher_role": "inside_sales"}'
-WHERE email = 'user@example.com';
+-- Only sales reps can insert customer requests
+CREATE POLICY "sales insert customer_requests"
+ON parts_matcher.customer_requests
+FOR INSERT
+WITH CHECK (parts_matcher.is_sales());
+
+-- app_maintenance can read all requests (but not insert)
+CREATE POLICY "admin read customer_requests"
+ON parts_matcher.customer_requests
+FOR SELECT
+USING (parts_matcher.is_admin());
 ```
 
-### Frontend Role Check
+**The rule:** RLS must be enabled on every table. A table with RLS enabled but no policies denies all access. Always run the security advisor after adding a new table.
 
-The frontend reads the role from the session JWT to control UI visibility:
+### Chapter 10: The Frontend Role Gate
+
+The frontend also checks the role claim to show or hide admin buttons. This is a UI convenience — the database RLS is the real enforcement layer.
 
 ```javascript
-// Show admin tooling only for app_maintenance
+// js/app.js
 function maybeShowAdminBtns(session) {
   const meta = session && session.user && session.user.app_metadata;
   const isAdmin = meta && meta.parts_matcher_role === 'app_maintenance';
@@ -247,27 +409,61 @@ function maybeShowAdminBtns(session) {
 }
 ```
 
-### Why This Approach
-- No custom PostgreSQL roles needed
-- Claim is project-namespaced (`parts_matcher_role`) so it does not conflict with claims used by other schemas on the same Supabase instance
-- Revocable instantly by removing or changing the claim in `app_metadata`
-- New roles can be added by extending `is_sales()` or adding a new helper — no existing policies need rewriting
-- Reusable pattern: any future schema on this instance can define its own namespaced claim
+**Important:** Never rely solely on frontend gating for security. A determined user can bypass the UI. RLS is what actually protects the data.
+
+### Chapter 11: Granting a Role
+
+To assign a role to a user:
+
+**Option A — Supabase Dashboard:**
+1. Go to **Authentication → Users**
+2. Select the user
+3. Edit **App Metadata** and add: `{ "parts_matcher_role": "inside_sales" }`
+4. The user must sign out and back in for the new JWT claim to take effect
+
+**Option B — SQL:**
+
+```sql
+UPDATE auth.users
+SET raw_app_meta_data = raw_app_meta_data || '{"parts_matcher_role": "inside_sales"}'
+WHERE email = 'user@example.com';
+```
 
 ---
 
-## Frontend Stack: GitHub Pages + Supabase JS
+🧪 **Try It 4.1 — Review the RLS Policies**
 
-This project uses **vanilla HTML/CSS/JavaScript** hosted on **GitHub Pages** as the frontend. This is a deliberate choice for an internal tool: no build pipeline, no framework overhead, easy to read and maintain by non-frontend developers.
+In the Supabase dashboard, go to **Authentication → Policies**. Find the `parts_matcher` schema tables.
 
-### Hosting Setup
-- Source lives in a `gh-pages` branch of the same repository (`andredavisme/parts-spec-matcher`)
-- GitHub Pages serves the branch directly at `https://andredavisme.github.io/parts-spec-matcher/`
-- No CI/CD required — pushing to `gh-pages` deploys immediately
-- **GitHub auto-enables Pages when the branch is named exactly `gh-pages`.** No manual configuration in Settings is required when using this branch name. If you use any other branch name (e.g., `frontend`, `main`), you will need to manually enable Pages via **Settings → Pages → Source: Deploy from branch**.
+For each workflow table (`customer_requests`, `request_spec_values`, `match_results`), answer:
+- Is RLS enabled?
+- What policies exist?
+- Which roles can SELECT? Which can INSERT?
 
-### Supabase JS Client
-The frontend connects to Supabase using the `@supabase/supabase-js` CDN build (no npm required):
+Write your findings in your personal notes file.
+
+---
+
+🧪 **Try It 4.2 — The Role Cutover Drill**
+
+This is a thought exercise based on a real issue that occurred during Milestone 8:
+
+The `is_admin()` helper was updated from checking `'admin'` to checking `'app_maintenance'`. This immediately broke admin access for any user whose JWT still carried the old `'admin'` claim.
+
+Walk through:
+1. How would you detect this problem if you didn't know the cause?
+2. What SQL would you run to check which users still have the old claim?
+3. What's the fix — and why must the user sign out and back in?
+
+Write your answer as a three-step checklist in your notes file.
+
+---
+
+## Part V — The Full Stack
+
+### Chapter 12: How the Frontend Talks to Supabase
+
+The frontend is a **static HTML/CSS/JS single-page app** hosted on the `gh-pages` branch of this repo and served by GitHub Pages. It connects to Supabase using the Supabase JavaScript client library loaded from CDN — no build pipeline, no framework, no npm.
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -277,371 +473,287 @@ The frontend connects to Supabase using the `@supabase/supabase-js` CDN build (n
 ```javascript
 // js/config.js
 // IMPORTANT: do NOT name this variable "supabase" — it collides with the CDN global.
-// Use a project-specific name like "sbClient".
-const sbClient = window.supabase.createClient('YOUR_SUPABASE_URL', 'YOUR_ANON_KEY');
+const sbClient = window.supabase.createClient(
+  'https://hhyhulqngdkwsxhymmcd.supabase.co',
+  'YOUR_PUBLISHABLE_KEY'
+);
 ```
 
-- Use the **anon key** (not the service role key) — safe for browser exposure
-- All data access is protected by Supabase Auth + RLS policies
-- The anon key and project URL are safe to commit to the `gh-pages` branch since RLS enforces all access control
+The **publishable (anon) key** is safe to commit to the `gh-pages` branch. It is not a secret — it can only do what RLS policies allow. The **service role key** is secret and must never appear in frontend code.
 
-### Auth Flow
-Authentication uses Supabase's built-in email/password provider:
+Common query patterns:
 
 ```javascript
-// Sign in
-const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+// SELECT with filter
+const { data, error } = await sbClient
+  .from('pm_brands')       // Always use the pm_* public wrapper views, not parts_matcher tables directly
+  .select('id, name')
+  .eq('is_active', true);
 
-// Sign out
-await sbClient.auth.signOut();
+// INSERT
+const { data } = await sbClient
+  .from('pm_customer_requests')
+  .insert({ product_type_id: 1, customer_name: 'Acme Co' })
+  .select();
 
-// Check session on page load
-const { data: { session } } = await sbClient.auth.getSession();
-if (!session) { /* show login view */ }
-```
-
-- Sales rep accounts are created in the Supabase dashboard under **Authentication → Users**
-- Role access is granted by adding the appropriate `parts_matcher_role` value to a user's **App Metadata** (see Role-Based Access Pattern above)
-
-### Non-Public Schema Access Pattern
-
-Supabase PostgREST only exposes the `public` schema by default. Calling tables or functions in a custom schema (e.g., `parts_matcher`) requires one of:
-
-1. **Adding the schema to PostgREST's exposed schemas list** — done via the Supabase Dashboard under **Project Settings → API → Exposed schemas**. Cannot be set via SQL as Supabase's managed configuration overrides it.
-2. **Creating `public` wrapper views/functions** — the approach used in this project. Create `public.pm_*` views over each `parts_matcher` table, and a `public.run_match()` wrapper over `parts_matcher.run_match()`. All JS queries then target the `public` schema normally with no `.schema()` call.
-
-**Key rules for wrapper views:**
-- Set `security_invoker = false` (the default / security definer). Setting `security_invoker = true` on a view that wraps a non-public schema table causes PostgREST to return 403 because it cannot resolve the cross-schema ownership chain for the calling role.
-- Grant `SELECT` (and `INSERT` where needed) on the views to the `authenticated` role.
-- Grant `USAGE, SELECT` on any sequences used by insertable tables to `authenticated`.
-- Grant `INSERT` on the underlying `parts_matcher` table directly to `authenticated` (required for the insert chain to complete through the view).
-
-**Key rules for wrapper functions:**
-- Declare as `SECURITY DEFINER` and set `search_path = parts_matcher, public`.
-- The return type signature must exactly match the underlying function — inspect with `SELECT pg_get_function_result('schema.fn(args)'::regprocedure)` before writing the wrapper.
-- Grant `EXECUTE` on the `public` wrapper to `authenticated`.
-
-### Calling the Match Engine
-
-```javascript
-// Correct: call the public wrapper directly on the root client
-const { data: matches, error } = await sbClient
+// Call a database function (RPC)
+const { data: matches } = await sbClient
   .rpc('run_match', { p_request_id: requestId });
 ```
 
-> **Note:** `.schema().rpc()` chaining is **not supported** in Supabase JS v2 for RPC calls. The `.schema()` method only works for table queries. Always call `.rpc()` directly on the client and expose the function through a `public` wrapper.
+### Chapter 13: The Public Wrapper Pattern
 
-### Page Structure
-The frontend is organized as a **single-page app** (`index.html`) with multiple named views toggled via CSS classes.
+Supabase PostgREST only exposes the `public` schema by default. Since all our tables live in `parts_matcher`, they are accessible to the frontend through **`public.pm_*` wrapper views** — one view per table.
 
-| View ID | Purpose |
+```sql
+-- Example wrapper view
+CREATE OR REPLACE VIEW public.pm_brands
+WITH (security_invoker = false)  -- Must be false for cross-schema views
+AS SELECT * FROM parts_matcher.brands;
+
+GRANT SELECT ON public.pm_brands TO authenticated;
+```
+
+Key rules:
+- Always use `security_invoker = false` on wrapper views (setting it to `true` causes 403 errors)
+- Grant `SELECT` on the view to `authenticated`
+- For insertable tables, also grant `INSERT` on the underlying table and `USAGE, SELECT` on any sequences
+- For RPC functions, create a `public` wrapper using `SECURITY DEFINER`
+
+This is why you always call `.from('pm_brands')` in JavaScript, never `.schema('parts_matcher').from('brands')`.
+
+### Chapter 14: The Match Engine
+
+The heart of the app is the `parts_matcher.run_match(p_request_id integer)` PostgreSQL function. It:
+
+1. Reads the customer's spec values from `request_spec_values`
+2. Compares them against every active catalog item of the same product type
+3. Scores each catalog item using these rules:
+   - `exact` match type → `1.0` if equal, `0.0` if not
+   - `range` match type → `1.0` if `customer_value ≤ catalog_value`, else `0.0`
+   - `nearest` match type → `1.0 / (1.0 + |customer_value − catalog_value|)`
+4. Final score = `(sum of field scores / total supplied fields) × 100`
+5. Secondary sort by `vendor_item_priority.priority_rank` ASC
+6. Inserts results into `match_results` and returns them
+
+The function is called from JavaScript via:
+
+```javascript
+const { data: matches } = await sbClient.rpc('run_match', { p_request_id: id });
+```
+
+> **Note:** `.schema().rpc()` chaining is not supported in Supabase JS v2. Always call `.rpc()` directly on the client — which is why `public.run_match` exists as a wrapper.
+
+---
+
+🧪 **Try It 5.1 — Trace a Feature End to End**
+
+Pick the feature: *"A sales rep selects Conveyor Roller, fills in the spec form, and sees match results."*
+
+Trace all five layers and write one sentence for each:
+
+1. **GitHub** — which file and branch contains the form rendering code?
+2. **Frontend** — what Supabase query submits the customer's spec values?
+3. **RLS** — what policy controls whether that insert is allowed?
+4. **Database** — what tables are written to, and in what order?
+5. **Migration** — which migration created the `customer_requests` table?
+
+Write this as a five-step trace in your notes file. You will find it invaluable for debugging.
+
+---
+
+## Part VI — Standards and Practices
+
+### Chapter 15: The Setup Prompt Pattern
+
+This project was initialized using a structured four-part setup prompt to an AI assistant (Perplexity with Supabase and GitHub MCP integrations). Understanding this pattern lets you replicate it for new projects.
+
+**Section 1 — The Idea:** Plain-language description of the business, the problem, and what the app will do. Include any relevant URLs.
+
+**Section 2 — The User Story:** Walk through the core workflow from a real user's perspective. Name the role, the trigger, each action, and the outcome.
+
+**Section 3 — Repo & Supabase Targets:** Tell the AI exactly where to build — repo name, visibility, Supabase project, schema name.
+
+**Section 4 — Progress Update Document:** Request a living milestone tracker in the repo, with the structure defined so handoffs work cleanly.
+
+From a well-formed prompt, the AI produces a full documentation suite (`README.md`, `product-objective.md`, `data-architecture.md`, `quote-workflow.md`, `progress-tracker.md`) and begins milestone work immediately.
+
+### Chapter 16: When Something Breaks
+
+Breaking things is part of building things. The response matters more than the mistake.
+
+**The incident response pattern:**
+
+1. **Stop the bleeding** — revert the change, roll back the migration, or disable the feature if it's causing active harm
+2. **Understand what happened** — read logs in Supabase, read the git diff, reproduce the error
+3. **Fix forward** — write a new migration or a new commit that corrects the issue
+4. **Document it** — add a brief entry to `progress-tracker.md` in the relevant milestone's Errors & Fixes section
+
+Supabase logs are your best friend. The dashboard has logs for the API, the database, edge functions, and auth. When something fails silently, check logs first.
+
+### Chapter 17: When an AI Thread Fails — How to Recover
+
+If the AI assistant gets stuck or a tool call fails mid-task, **the fastest recovery is to delete the thread and start a new one.** All meaningful progress is already committed to the repo. The thread is disposable — the repo is the source of truth.
+
+**Recovery steps:**
+
+1. Before deleting the thread — copy the last substantive AI response to a text file
+2. Delete the current thread
+3. Start a new thread in the same Space
+4. Use this prompt:
+
+```
+Pick up where we left off. Review docs/progress-tracker.md to get current on completed
+milestones and next steps, then continue from there.
+
+I'm also attaching the last AI response from the failed thread for context:
+[paste or attach the saved response here]
+```
+
+The AI will read the repo, locate the last completed milestone, and resume without re-explanation.
+
+**Best practice:** Commit and update `progress-tracker.md` at the end of every milestone. Save the last AI response before deleting a thread. Do not try to salvage a broken thread.
+
+---
+
+🧪 **Try It 6.1 — Read the Logs**
+
+In the Supabase dashboard, open **Logs → API**.
+
+Look at the last 20 requests. For each, note:
+- The HTTP method (GET, POST, PATCH, DELETE)
+- The status code (200 = success, 4xx = client error, 5xx = server error)
+- The table or endpoint being accessed
+
+Can you tell which requests came from the frontend app vs. direct SQL editor queries?
+
+---
+
+🧪 **Try It 6.2 — Run the Security Advisor**
+
+In the Supabase dashboard, open the **Security Advisor**.
+
+For each finding in the `parts_matcher` schema:
+- What is the issue?
+- What is the suggested fix?
+- Is this a policy gap, a missing RLS enable, or something else?
+
+Do not apply fixes without understanding them. Document your findings in your notes file.
+
+---
+
+## Appendix A — Known Issues and Lessons Learned
+
+These are real errors encountered during development. Reading them before you encounter them is the next best thing to having experienced them yourself.
+
+| Issue | What Happened | Fix | Prevention |
+|---|---|---|---|
+| CDN name collision | `const supabase` in `config.js` shadowed the CDN global | Renamed to `sbClient` | Never name the client variable `supabase` |
+| Stale anon key | Placeholder key in `config.js` caused `Invalid API key` | Fetched live key via MCP | Always fetch the live key at scaffold time |
+| `parts_matcher` not exposed | `.schema('parts_matcher').from(...)` returned 406 | Created `public.pm_*` wrapper views | Use wrapper views from the start, not the schema shortcut |
+| `security_invoker = true` | Cross-schema wrapper views returned 403 | Set `security_invoker = false` | Always use `security_invoker = false` on cross-schema wrapper views |
+| Sequence permission denied | INSERT via view returned `permission denied for sequence` | Granted `USAGE, SELECT` on sequence to `authenticated` | Include sequence grants when creating insertable wrapper views |
+| `run_match` RPC 404 | PostgREST doesn't expose non-public schema functions | Created `public.run_match` wrapper | Create public wrappers for all non-public functions at the same time as the function itself |
+| Wrong `RETURNS TABLE` column names | Frontend used `out_brand_name`; actual column was `out_brand` | Updated JS to match actual signature | After writing any function, document exact return column names immediately |
+| Role claim cutover | Updating `is_admin()` from `'admin'` to `'app_maintenance'` broke existing sessions | Updated user metadata immediately; users refreshed sessions | Plan claim renames carefully; update all users before deploying the policy change |
+| Spec value column mismatch | `admin-catalog.js` wrote to `spec_value` (doesn't exist); actual columns are `value_numeric` / `value_text` | Added `catResolveSpecValue()` and `catSpecDisplayValue()` helpers | Verify column names against schema before writing insert code |
+
+---
+
+## Appendix B — Quick Reference
+
+**SQL Patterns**
+
+```sql
+-- Check if RLS is enabled on a table
+SELECT relname, relrowsecurity
+FROM pg_class
+WHERE relname = 'your_table_name';
+
+-- List all policies on a table
+SELECT policyname, cmd, qual
+FROM pg_policies
+WHERE tablename = 'your_table_name';
+
+-- Check which migrations have been applied
+SELECT name, executed_at
+FROM supabase_migrations.schema_migrations
+ORDER BY executed_at DESC;
+
+-- See all tables in parts_matcher
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'parts_matcher'
+ORDER BY table_name;
+```
+
+**Supabase JS Patterns**
+
+```javascript
+// SELECT with filter (always use pm_* views)
+const { data } = await sbClient
+  .from('pm_brands')
+  .select('id, name')
+  .eq('is_active', true);
+
+// INSERT a row
+const { data } = await sbClient
+  .from('pm_customer_requests')
+  .insert({ product_type_id: 1, customer_name: 'Acme' })
+  .select();
+
+// UPDATE a row
+const { data } = await sbClient
+  .from('pm_vendors')
+  .update({ contact_email: 'new@example.com' })
+  .eq('id', vendorId);
+
+// Call a function
+const { data } = await sbClient
+  .rpc('run_match', { p_request_id: requestId });
+```
+
+---
+
+## Appendix C — Glossary
+
+| Term | Definition |
 |---|---|
-| `#view-login` | Email/password login form |
-| `#view-selector` | Product category + type dropdowns; sales rep starting point |
-| `#view-request` | Dynamic spec entry form drawn from `quote_template_fields` |
-| `#view-results` | Ranked match results from `run_match` |
-| `#view-admin-vendors` | Admin — Vendors CRUD |
-| `#view-admin-brands` | Admin — Brands CRUD |
-| `#view-admin-pt` | Admin — Product Types CRUD |
-| `#view-admin-priority` | Admin — Vendor Item Priority CRUD |
-| `#view-admin-catalog` | Admin — Catalog Items CRUD with inline spec editing |
-| `#view-admin-specs` | Admin — Spec Definitions CRUD with sort order management |
-| `#view-admin-upload` | Admin — CSV bulk upload for catalog items and specs |
-
-Supporting files:
-
-| File | Purpose |
-|---|---|
-| `css/styles.css` | All styles |
-| `js/config.js` | Supabase client initialization |
-| `js/auth.js` | `signIn()`, `signOut()`, `getSession()` helpers |
-| `js/selector.js` | Category → product type cascade loader |
-| `js/request.js` | Template loader, dynamic form renderer, insert + RPC call |
-| `js/results.js` | Ranked results table renderer |
-| `js/admin-vendors.js` | Vendors CRUD screen logic |
-| `js/admin-brands.js` | Brands CRUD screen logic |
-| `js/admin-product-types.js` | Product Types CRUD screen logic |
-| `js/admin-priority.js` | Vendor Item Priority CRUD screen logic |
-| `js/admin-catalog.js` | Catalog Items CRUD with inline spec editor |
-| `js/admin-specs.js` | Spec Definitions CRUD with sort order reordering |
-| `js/admin-upload.js` | CSV bulk upload: parse, validate, preview, commit |
-| `js/app.js` | View routing, session restore on load, login/logout handlers, admin gate |
+| Commit | A saved snapshot of code changes with a message |
+| Branch | A separate working copy of the code |
+| Pull Request (PR) | A request to merge a branch into main, reviewed before merging |
+| Migration | A named SQL operation applied via `apply_migration` that changes the database structure |
+| Schema | A named namespace inside a PostgreSQL database that groups tables (`parts_matcher`, `public`) |
+| Primary Key | A unique ID column that identifies each row in a table |
+| Foreign Key | A column that references the primary key of another table |
+| RLS | Row-Level Security — per-row access control enforced by the database |
+| Wrapper View | A `public` schema view over a `parts_matcher` table, making it accessible to PostgREST |
+| Publishable Key | The safe-to-expose Supabase key used in frontend code |
+| Service Role Key | The secret Supabase key that bypasses RLS — never in frontend code |
+| JOIN | SQL operation that combines rows from two tables based on a shared column |
+| Soft Delete | Setting `is_active = false` instead of deleting a row, to preserve referential integrity |
+| app_metadata | The JWT field where Supabase stores user role claims like `parts_matcher_role` |
 
 ---
 
-## Milestone Structure Reference
+## Appendix D — How This Guide Grows
 
-Every milestone in `docs/progress-tracker.md` follows this structure:
+This guide lives at `docs/build-guide.md` in the `main` branch. It is a living document.
 
-```markdown
-## Milestone N — [Name]
-**Status:** [✅ Complete | 🔲 Not Started | 🔄 In Progress]
-**Date:** [YYYY-MM-DD when started or completed]
+**When to update it:**
+- A new system or tool is added → add a chapter
+- A standard changes (migration naming, commit format, etc.) → update the relevant chapter
+- A new error pattern would help future readers → add it to Appendix A
+- Something broke and the team learned from it → add a note in Chapter 16
 
-### Prior Work
-What was already in place before this milestone began. 
-References the previous milestone or initial state.
+**How to update it:**
+1. Branch from `main`: `git checkout -b docs/update-training-guide`
+2. Edit the Markdown file
+3. Commit: `docs: update training guide — brief description`
+4. Open a PR, get a review, merge
 
-### Dependencies
-What must exist, be confirmed, or be decided before work on 
-this milestone can begin. Specific — not generic.
-
-### Work Completed
-Detailed record of every action taken during this milestone.
-Written as it happens, not reconstructed afterward.
-
-### Errors & Fixes
-Specific problems encountered and exactly how they were resolved.
-Includes tool errors, schema conflicts, logic issues, etc.
-If none: write "None encountered."
-
-### Next Steps → Milestone N+1
-The defined handoff point. Specific enough that a new developer 
-can pick up without asking questions.
-```
+The guide should always reflect how the system actually works. If the code and the guide disagree, the guide is wrong.
 
 ---
 
-## Actual Milestone Timing — Session 1 (2026-05-11)
-
-This section documents the actual time taken for each milestone during the first full development session. All times are derived from Git commit timestamps (UTC). Use these as planning benchmarks for similar projects.
-
-### Session Overview
-
-| Milestone | Start (UTC) | End (UTC) | Elapsed | Complexity |
-|---|---|---|---|---|
-| 0 — Project Initialization | 14:22 | 14:36 | ~14 min | Low |
-| 1 — Database Schema Creation | 14:36 | 15:38 | ~62 min | Medium |
-| 2 — Seed Data & Catalog Entry | 15:38 | 19:10 | ~212 min | High |
-| 3 — Quote Template Builder | 19:10 | 19:25 | ~15 min | Low |
-| 4 — Match Query Engine | 19:25 | 19:43 | ~18 min | Medium |
-| 5 — Frontend Interface | 19:43 | 20:49 | ~66 min | High |
-| **Total** | | | **~387 min (~6.5 hrs)** | |
-
-> Times reflect Perplexity AI-assisted development including tool calls, iteration, and error correction. Human review and approval time is excluded since it varies per user.
-
----
-
-### Milestone 0 — ~14 minutes
-**What happened:** Setup prompt written, repo created, full doc suite generated and pushed in one commit.
-
-**Failure points:** None. Milestone 0 is documentation-only and reliably fast.
-
-**Benchmark guidance:** Budget 10–20 minutes. Longer if the initial prompt is vague and requires clarification iterations.
-
----
-
-### Milestone 1 — ~62 minutes
-**What happened:** Schema and all 15 tables created across 3 migrations. RLS applied. Initial seed data inserted.
-
-**Failure points:** None encountered on this project, but common failure patterns to expect:
-- **Missing `IF NOT EXISTS`** on schema creation causes migration failure if run twice — always include it
-- **Constraint naming collisions** if re-running a migration that already partially applied — use `DROP ... IF EXISTS` before `CREATE`
-- **RLS enabled but no policies** — the security advisor will catch this; always run it after migration
-
-**Benchmark guidance:** Budget 45–90 minutes depending on table count. More tables with complex foreign key graphs take longer to validate.
-
----
-
-### Milestone 2 — ~212 minutes (~3.5 hours)
-**What happened:** 203 brands scraped and seeded, 38 product types added, 228 spec definitions created, 3 placeholder catalog items with 24 specs inserted, vendor priority seeded.
-
-This was the longest milestone by far — almost entirely due to data volume and one schema fix.
-
-**Failure points:**
-
-1. **`vendor_item_priority` missing `brand_id` — ~20 min lost**
-   - Original schema had unique constraint on `(vendor_id, product_type_id)` which didn't support brand-level differentiation with a single vendor
-   - Two rows were inserted before the issue was discovered
-   - **Fix:** Migration to add `brand_id`, update constraint, delete orphaned rows
-   - **Prevention:** When designing priority/ranking tables, always ask "what's the most granular level this needs to work at?" before inserting data
-
-2. **Brand deduplication — ~15 min**
-   - Source brand list from easternia.com had trademark symbols and minor formatting inconsistencies
-   - **Fix:** Strip symbols, normalize before insert, use `ON CONFLICT DO NOTHING`
-   - **Prevention:** Always normalize source data before bulk inserts; use a staging select before inserting to spot duplicates
-
-**Benchmark guidance:** Budget 2–4 hours for a full data seeding milestone. The more product types and spec definitions, the longer it takes. If real catalog data is available in CSV format, use bulk upload to cut this significantly.
-
----
-
-### Milestone 3 — ~15 minutes
-**What happened:** 42 new quote templates and 228 template fields inserted in a single migration by selecting directly from `spec_definitions`.
-
-**Failure points:** None. This was fast because the migration was written as a `INSERT ... SELECT` rather than hand-crafting values.
-
-**Benchmark guidance:** Budget 10–20 minutes. The key insight that kept this short: **drive the insert from existing data rather than generating values manually.**
-
----
-
-### Milestone 4 — ~18 minutes
-**What happened:** `run_match` PostgreSQL function written, tested, and validated end-to-end.
-
-**Failure points:**
-
-1. **Ambiguous column reference — ~5 min**
-   - `RETURNS TABLE` column names collided with query result column names inside the function body
-   - **Fix:** Prefix all return columns with `out_` (e.g., `out_brand`, `out_match_score`)
-   - **Prevention:** Always use a distinctive prefix (`out_`, `p_` for parameters) in PostgreSQL functions to avoid ambiguity
-
-2. **Cannot change return type of existing function — ~3 min**
-   - PostgreSQL does not allow `CREATE OR REPLACE FUNCTION` to change the return type
-   - **Fix:** `DROP FUNCTION IF EXISTS` before `CREATE FUNCTION` when the signature changes
-   - **Prevention:** Include the drop in any migration that modifies function signatures
-
-**Benchmark guidance:** Budget 15–30 minutes for a scoring/matching function of this complexity. More complex scoring logic (weighted fields, multi-pass matching) will take longer.
-
----
-
-### Milestone 5 — ~66 minutes
-**What happened:** Full 4-view SPA built and deployed on GitHub Pages. Validated end-to-end in production.
-
-This milestone had the most failure points — all Supabase-specific — which extended it beyond what the code complexity alone would require.
-
-**Failure points:**
-
-1. **CDN global name collision — ~5 min**
-   - `const supabase` in `config.js` shadowed the `supabase` global exposed by the jsdelivr bundle, causing a runtime error
-   - **Fix:** Renamed to `sbClient`
-   - **Prevention:** Never name your Supabase client variable `supabase`. Use `sbClient` or a project-prefixed name.
-
-2. **Stale anon key — ~3 min**
-   - `config.js` was scaffolded with a placeholder key that was never updated, causing `Invalid API key` on every request
-   - **Fix:** Fetched current key via MCP and updated `config.js`
-   - **Prevention:** Always fetch the live key via MCP at scaffold time rather than using a placeholder
-
-3. **Password reset via SQL — `crypt()` schema path — ~5 min**
-   - `crypt()` called without schema qualification; `pgcrypto` lives in the `extensions` schema on Supabase-managed Postgres
-   - **Fix:** Use `extensions.crypt()` and `extensions.gen_salt()` explicitly
-   - **Prevention:** On Supabase, always qualify extension functions: `extensions.crypt()`, `extensions.gen_salt()`, etc.
-
-4. **`parts_matcher` schema not exposed to PostgREST — ~15 min**
-   - `.schema('parts_matcher').from(...)` returned 406, then 404 after failed `ALTER ROLE` attempts
-   - `ALTER ROLE authenticator SET pgrst.db_schemas` is overridden by Supabase's managed config on reload and has no permanent effect
-   - **Fix:** Created `public.pm_*` views over all `parts_matcher` tables. All JS queries updated to use `pm_*` with no `.schema()` call
-   - **Prevention:** On Supabase managed projects, never assume you can expose a custom schema via SQL. Either add it in the Dashboard (**Settings → API → Exposed schemas**) or use the `public` wrapper view pattern documented above.
-
-5. **`security_invoker = true` blocked cross-schema view reads — ~8 min**
-   - Views with `security_invoker = true` over `parts_matcher` tables returned 403
-   - PostgREST cannot resolve the cross-schema ownership chain when the view runs as the calling role rather than the view owner
-   - **Fix:** Set `security_invoker = false` on all `pm_*` views
-   - **Prevention:** When wrapping non-public schema tables in `public` views, always use `security_invoker = false` (the default). Rely on view-level grants and underlying table RLS for access control.
-
-6. **INSERT permission denied for sequence — ~5 min**
-   - INSERT via the `pm_customer_requests` view returned `permission denied for sequence customer_requests_id_seq`
-   - The sequence lives in `parts_matcher` and `authenticated` had no USAGE grant on it
-   - **Fix:** `GRANT USAGE, SELECT ON SEQUENCE parts_matcher.customer_requests_id_seq TO authenticated` (and same for `request_spec_values_id_seq`). Also granted `INSERT` directly on the underlying tables.
-   - **Prevention:** When creating insertable `public` views over custom-schema tables with serial/sequence primary keys, always include sequence grants alongside table grants.
-
-7. **`run_match` RPC 404 — ~10 min**
-   - `sbClient.rpc('run_match', ...)` returned 404 because PostgREST only serves functions from `public` by default
-   - **Fix:** Created `public.run_match(p_request_id integer)` as a `SECURITY DEFINER` SQL wrapper calling `parts_matcher.run_match`
-   - Wrapper return type must exactly match the underlying function — first attempt failed because assumed column names differed from actual. Inspected with `pg_get_function_result()` before the second attempt succeeded.
-   - **Prevention:** For any function in a non-public schema, create a `public` wrapper at the same time as the function. Don't wait until the frontend hits a 404 to discover this.
-
-8. **Wrong column names in `results.js` — ~5 min**
-   - `results.js` used `out_brand_name` and `out_miss_notes`; actual return columns were `out_brand` and `out_match_notes`
-   - **Fix:** Updated column references to match `pg_get_function_result()` output
-   - **Prevention:** After writing any function with a `RETURNS TABLE` clause, immediately document the exact column names in the progress tracker. Reference that list when writing the frontend consumer.
-
-**Benchmark guidance:** Budget 45–90 minutes for a 4-view SPA connecting to a custom-schema Supabase backend. The Supabase schema exposure issues account for ~40 minutes of the 66 total — if you follow the wrapper view pattern from the start, this milestone compresses to ~25–30 minutes.
-
----
-
-## Actual Milestone Timing — Session 2 (2026-05-12)
-
-Milestone 6 was developed across multiple threads in Session 2, with one thread failure requiring a restart mid-milestone.
-
-### Session Overview
-
-| Milestone | Start (UTC) | End (UTC) | Elapsed | Complexity |
-|---|---|---|---|---|
-| 6 — Admin / DBA Tooling | ~15:00 | ~20:00 | ~300 min (est.) | High |
-
-> Exact start/end times are estimated because two threads were used. The first thread was discarded before completion; the second thread reconstructed and finished the work. Git commit timestamps confirm all 7 admin screens were built and the DB index migration was applied within this session.
-
----
-
-### Milestone 6 — ~300 minutes (estimated, across 2 threads)
-**What happened:** All 7 admin screens built and deployed: Vendors, Brands, Product Types, Vendor Item Priority, Catalog Items, Spec Definitions, and CSV Upload. Admin gate added to `app.js`. Performance advisor run and 58 indexes added. Spec value column bug in `admin-catalog.js` discovered and fixed.
-
-**Failure points:**
-
-1. **Spec value column mismatch in `admin-catalog.js` — ~10 min**
-   - Catalog Items screen was writing spec values to a non-existent `spec_value` column; actual columns are `value_numeric` and `value_text`
-   - Silently wrote nothing — no DB error, but specs were never saved
-   - **Fix:** Added `catResolveSpecValue()` and `catSpecDisplayValue()` helpers. Updated both READ and WRITE paths to use `value_numeric`/`value_text`
-   - **Prevention:** When a table has split numeric/text value columns (a common denormalization for query performance), verify the column names against the actual schema before writing the insert. Don't assume `spec_value` — check with `\d table_name` or equivalent.
-
-2. **Thread context loss mid-milestone — ~30 min overhead**
-   - First Milestone 6 thread encountered a failure and was discarded
-   - The 4 screens built in that thread (Vendors, Brands, Product Types, Vendor Item Priority) were not yet logged in the progress tracker
-   - Recovery required: starting a new thread, reading the codebase to reconstruct what was done, then continuing
-   - **Fix:** Attached the previous thread's AI responses as context in the new thread prompt. Reconstructed the work log from codebase inspection.
-   - **Prevention:** **Save AI responses before deleting a thread.** Copy the last substantive AI response and attach it when starting the recovery thread. This eliminates the codebase-inspection step and cuts recovery time in half.
-   - See the [recovery procedure](#when-the-ai-prompt-fails--how-to-recover) below.
-
-3. **Performance advisor cross-schema scope — ~10 min**
-   - Running the performance advisor on the shared Supabase project returned findings for all schemas, not just `parts_matcher`
-   - Needed to identify which schemas were relevant before applying index fixes
-   - **Fix:** Scoped the index migration to `public` and `parts_matcher` only; all other schemas left untouched
-   - **Prevention:** On a shared Supabase project, always review advisor findings before acting. Filter by schema name and confirm ownership before applying any fix.
-
-**Benchmark guidance:** Budget 3–5 hours for a full admin tooling milestone with 7 CRUD screens. Each screen with a modal + list view + activate/deactivate takes ~20–30 minutes to build and wire. The thread failure added ~30 minutes of recovery overhead — recoverable if prior AI responses were saved, but painful if not.
-
----
-
-## Why This Works
-
-- **Perplexity** maintains project context across sessions within a Space, reducing re-explanation overhead
-- **MCP integrations** allow Perplexity to act directly on Supabase and GitHub — no copy-paste, no manual steps
-- **Documentation-first** approach means the project is always in a legible, transferable state
-- **The progress tracker** functions as a technical changelog and onboarding document simultaneously
-- **Milestone structure** enforces dependency awareness and prevents skipped steps
-
----
-
-## Reusing This Process for a New Project
-
-1. Open Perplexity and create a new Space named for the project
-2. Confirm Supabase and GitHub MCP connections are active
-3. Write a setup prompt using the four sections above
-4. Review the generated documentation before proceeding to schema creation
-5. Proceed milestone by milestone, updating `progress-tracker.md` as each one completes
-6. For any custom-schema project: create `public` wrapper views and functions **at the time the schema objects are created**, not when the frontend first hits a 404
-
----
-
-## When the AI Prompt Fails — How to Recover
-
-If Perplexity gets stuck, returns an error, asks you to try again, or a tool call fails mid-task, **the fastest and most reliable recovery is to delete the thread and start a new one.**
-
-This works because all meaningful progress is already committed to the repo and the progress tracker. The thread is disposable — the repo is the source of truth.
-
-### Recovery Steps
-
-1. **Before deleting the thread** — copy the last substantive AI response to a text file. This is your recovery context.
-2. **Delete the current thread** in Perplexity
-3. **Start a new thread** in the same Space
-4. **Use this prompt to re-establish context:**
-
-```
-Pick up where we left off in [repo name]. Review docs/progress-tracker.md to get current
-on completed milestones and next steps, then continue from there.
-
-I'm also attaching the last AI response from the failed thread for additional context:
-[paste or attach the saved AI response here]
-```
-
-Perplexity will read the repo, locate the last completed milestone in `progress-tracker.md`, and resume without needing any manual re-explanation. The attached prior response fills in any work that was done but not yet committed.
-
-### Why This Works
-- Milestones are committed to the repo as they complete — nothing mid-milestone is lost as long as you keep `progress-tracker.md` current
-- The progress tracker is specifically structured to serve as a handoff document for exactly this scenario
-- Starting fresh clears any corrupted context or tool state that caused the failure in the first place
-- Attaching the prior AI response eliminates the need to reconstruct in-progress work from codebase inspection
-
-### Best Practice
-- **Commit and update `progress-tracker.md` at the end of every milestone** — this is what makes thread recovery seamless
-- **Save the last AI response before deleting a thread** — this covers in-progress work that isn't yet committed
-- Don't try to salvage a broken thread; the overhead of re-explaining context in a degraded session is higher than the cost of a clean restart
+*Last updated: 2026-05-13 — parts-spec-matcher*
