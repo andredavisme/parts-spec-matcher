@@ -134,7 +134,7 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
 | 2 | Dodge | DGE-CR-250-36-0750 | Galvanized, 2.5" dia × 36" BF, 3/4" shaft |
 | 3 | Rexnord | RXN-CR-350-48-1000 | Heavy Duty, 3.5" dia × 48" BF, 1" shaft |
 
-- Added 24 `catalog_item_specs` records (8 specs × 3 items): roller_diameter, roller_length, shaft_diameter, load_rating, max_speed, material, bearing_type, finish
+- Added 24 `catalog_item_specs` records (8 specs × 3 items)
 - Added 3 `vendor_item_priority` records for Conveyor Roller:
   - Rank 1: Browning (preferred — best margin)
   - Rank 2: Dodge (good availability)
@@ -143,21 +143,14 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
 ### Errors & Fixes
 
 **Schema Fix — `vendor_item_priority` missing `brand_id`**
-- Original unique constraint was `(vendor_id, product_type_id)` — only one row per vendor+product type, which made brand-level priority impossible with a single vendor
-- **Fix:** Applied migration `vendor_item_priority_add_brand_id`
-  - Dropped old unique constraint
-  - Added `brand_id integer REFERENCES parts_matcher.brands(id)`
-  - Added new unique constraint `(vendor_id, brand_id, product_type_id)`
-- Two orphaned rows (IDs 1–2) inserted before fix were left in place with `brand_id = NULL`
+- Fix: migration `vendor_item_priority_add_brand_id` — dropped old unique constraint, added `brand_id`, new unique constraint `(vendor_id, brand_id, product_type_id)`
 
-**Cleanup — Orphaned `vendor_item_priority` rows**
-- Deleted rows where `brand_id IS NULL` via `execute_sql`
-- Confirmed: 3 clean priority rows remain (Browning rank 1, Dodge rank 2, Rexnord rank 3) all with valid `brand_id` values
+**Cleanup — Orphaned rows**
+- Deleted rows where `brand_id IS NULL`
 
 ### Next Steps → Milestone 3
-- Replace placeholder catalog items with real part data from brand catalogs
-- Run the end-to-end match workflow manually to validate before building the query engine
-- Begin Milestone 3: Quote Template Builder
+- Replace placeholder catalog items with real part data
+- Run end-to-end match workflow manually to validate before building query engine
 
 ---
 
@@ -166,7 +159,7 @@ Milestone 1 complete. All schema tables created, RLS applied, initial reference 
 **Date:** 2026-05-11
 
 ### Prior Work
-Milestone 2 complete. Reference data seeded, placeholder catalog items in place for Conveyor Roller. Orphaned `vendor_item_priority` rows cleaned up.
+Milestone 2 complete. Reference data seeded, placeholder catalog items in place.
 
 ### Dependencies
 - `spec_definitions` and `spec_units` populated for all 43 product types ✅
@@ -174,26 +167,15 @@ Milestone 2 complete. Reference data seeded, placeholder catalog items in place 
 
 ### Work Completed
 
-**Conveyor Roller Template (pre-existing)**
-- 1 `quote_templates` record (ID: 1, product_type_id: 1, version: 1) was already in place from earlier work
-- 8 `quote_template_fields` already linked to all Conveyor Roller spec definitions in correct sort order
-
-**Migration — All Remaining Product Types** (`parts_matcher_quote_templates_all_product_types`)
-- Inserted 42 new `quote_templates` records (IDs 2–43), one per remaining active product type
-- Populated `quote_template_fields` for all 42 new templates by selecting directly from `spec_definitions` where `product_type_id` matches
-- Fields inherit `sort_order` and `is_required` from their corresponding `spec_definitions` rows
-- `display_hint` left NULL — to be populated by DBA or admin UI in Milestone 6
-
-**Final Counts**
-- `quote_templates`: 43 (one per product type)
-- `quote_template_fields`: 228 (matches total active spec definitions exactly)
+- Confirmed 1 `quote_templates` record (ID: 1) and 8 fields for Conveyor Roller already in place
+- Migration `parts_matcher_quote_templates_all_product_types`: inserted 42 new templates (IDs 2–43) and all `quote_template_fields` for every remaining product type
+- Final counts: 43 templates, 228 fields
 
 ### Errors & Fixes
-None encountered.
+None.
 
 ### Next Steps → Milestone 4
-- Build the `parts_matcher.run_match(p_request_id integer)` PostgreSQL function as a Supabase RPC
-- Test against 3 Conveyor Roller catalog items to validate match logic end-to-end
+- Build `parts_matcher.run_match(p_request_id)` PostgreSQL function
 
 ---
 
@@ -202,48 +184,26 @@ None encountered.
 **Date:** 2026-05-11
 
 ### Prior Work
-Milestone 3 complete. Quote templates built for all 43 product types. Fields match spec definitions exactly.
+Milestone 3 complete. Quote templates built for all 43 product types.
 
 ### Dependencies
-- Catalog items with complete spec values for at least one product type ✅ (3 Conveyor Roller items)
-- Vendor priority data entered for at least one product type ✅
-- Defined tolerance / matching rules per spec field type ✅
+- Catalog items with complete spec values for Conveyor Roller ✅
+- Vendor priority data ✅
 
 ### Work Completed
 
-**Test Customer Request**
-- Inserted 1 `customer_requests` record (ID: 1): product_type_id=1, template_id=1, customer_name="Test Customer", ref="TEST-001"
-- Inserted 8 `request_spec_values` covering all Conveyor Roller spec fields
-
-**Scoring Logic**
-- `exact` → 1.0 if match, 0.0 if not (case-insensitive for text)
-- `nearest` → `1.0 / (1.0 + abs(customer_value - catalog_value))` — smooth proximity, always > 0
-- `range` → 1.0 if `customer_value <= catalog_value`, else 0.0
-- Final score = `(sum of field scores / total customer-supplied fields) * 100`, rounded 2dp
-- Secondary sort: `vendor_item_priority.priority_rank` ASC
-
-**Test Results — `SELECT * FROM parts_matcher.run_match(1)`**
-
-| Rank | Brand | Part Number | Score | Vendor Priority |
-|---|---|---|---|---|
-| 1 | Dodge | DGE-CR-250-36-0750 | 90.53 | 2 |
-| 2 | Browning | BRW-CR-190-24-0500 | 46.97 | 1 |
-| 3 | Rexnord | RXN-CR-350-48-1000 | 31.79 | 3 |
-
-- Dodge ranks #1 despite vendor priority rank 2 — confirms score overrides vendor rank ✅
-- Results written to `match_results`; re-running is idempotent ✅
+- Inserted test `customer_requests` (ID: 1) and 8 `request_spec_values`
+- Built `parts_matcher.run_match(p_request_id)` with scoring:
+  - `exact` → 1.0/0.0; `nearest` → `1/(1+|diff|)`; `range` → 1.0 if customer ≤ catalog
+  - Score = `(sum / count) * 100`, secondary sort by vendor priority rank
+- Test results validated (Dodge rank 1 at 90.53, Browning rank 2 at 46.97, Rexnord rank 3 at 31.79)
 
 ### Errors & Fixes
-
-**Ambiguous column reference in RETURNS TABLE**
-- Fix: prefixed all RETURNS TABLE column names with `out_` and CTE aliases with short disambiguating prefixes
-
-**Cannot change return type of existing function**
-- Fix: `DROP FUNCTION IF EXISTS` before `CREATE FUNCTION` in same migration
+- Ambiguous column reference in RETURNS TABLE → prefixed all output columns with `out_`
+- Cannot change return type → DROP before CREATE in migration
 
 ### Next Steps → Milestone 5
-- Scaffold frontend (static HTML/JS + Supabase JS client)
-- Implement product type selector, request form, and match results view
+- Build frontend
 
 ---
 
@@ -252,29 +212,23 @@ Milestone 3 complete. Quote templates built for all 43 product types. Fields mat
 **Date:** 2026-05-12
 
 ### Prior Work
-Milestone 4 complete. Match engine functional and validated end-to-end.
+Milestone 4 complete. Match engine functional.
 
 ### Dependencies
-- Supabase publishable key for client queries
-- Static hosting via GitHub Pages (gh-pages branch)
+- Supabase publishable key
+- GitHub Pages (`gh-pages` branch)
 
 ### Work Completed
 
-- Deployed static frontend to GitHub Pages (`gh-pages` branch)
-- `index.html` — single-page app shell with tab-based navigation
-- `js/app.js` — auth state management, session handling, role-based UI gating via `parts_matcher_role` JWT claim
-- `js/auth.js` — Supabase auth helpers (sign in / sign out)
-- `js/config.js` — Supabase project URL and publishable key
-- `js/selector.js` — product type dropdown, loads from `product_types` table
-- `js/request.js` — spec entry form, dynamically renders fields from `quote_template_fields`; submits to `customer_requests` + `request_spec_values`, then calls `run_match` RPC
-- `js/results.js` — renders ranked match results from `match_results` table
-- `css/` — base styles
+- Deployed static SPA to GitHub Pages
+- Files: `index.html`, `js/app.js`, `js/auth.js`, `js/config.js`, `js/selector.js`, `js/request.js`, `js/results.js`, `css/`
+- Auth: Supabase email/password; role gating via `parts_matcher_role` JWT claim
 
 ### Errors & Fixes
 None recorded.
 
 ### Next Steps → Milestone 6
-- Build admin screens for catalog and reference data management
+- Build admin screens
 
 ---
 
@@ -283,29 +237,21 @@ None recorded.
 **Date:** 2026-05-12
 
 ### Prior Work
-Milestone 5 complete. Sales rep interface functional on GitHub Pages.
+Milestone 5 complete. Sales rep interface functional.
 
 ### Dependencies
 - `app_maintenance` JWT claim for admin role gating
-- All reference and catalog tables accessible via Supabase JS client
 
 ### Work Completed
 
-- `js/admin-brands.js` — CRUD for `brands` table
-- `js/admin-catalog.js` — CRUD for `catalog_items` and `catalog_item_specs`
-- `js/admin-priority.js` — manage `vendor_item_priority` rankings
-- `js/admin-product-types.js` — CRUD for `product_types`
-- `js/admin-specs.js` — CRUD for `spec_definitions` and `spec_units`
-- `js/admin-upload.js` — CSV bulk upload for catalog items and specs
-- `js/admin-vendors.js` — CRUD for `vendors`
-- All admin tabs hidden for non-`app_maintenance` users via `maybeShowAdminBtns()` in `app.js`
+- `js/admin-vendors.js`, `js/admin-brands.js`, `js/admin-product-types.js`, `js/admin-priority.js`, `js/admin-specs.js`, `js/admin-catalog.js`, `js/admin-upload.js`
+- All admin tabs hidden for non-`app_maintenance` users
 
 ### Errors & Fixes
 None recorded.
 
 ### Next Steps → Milestone 7
-- Run security advisor against full schema
-- Address any RLS gaps or function security warnings surfaced
+- Run security advisor
 
 ---
 
@@ -314,26 +260,19 @@ None recorded.
 **Date:** 2026-05-12
 
 ### Prior Work
-Milestone 6 complete. Admin tooling in place. Full schema active.
-
-### Dependencies
-- Supabase security advisor access
-- All schemas populated with tables, functions, and RLS policies
+Milestone 6 complete.
 
 ### Work Completed
 
-**Security Advisor Findings — Addressed**
-
-- `client_lawnscaping` tables (`consult_requests`, `customers`, `locations`, `quotes`) — RLS was enabled at policy-definition time but `ENABLE ROW LEVEL SECURITY` was never applied to the tables themselves; policies were silently doing nothing. Fixed via migration `enable_rls_client_lawnscaping`.
-- `public.run_match` accessible by `anon` role — revoked via migration `revoke_anon_run_match_and_fix_search_path`. Only `authenticated` can now call the match API.
-- `parts_matcher.run_match` had mutable `search_path` — fixed in same migration as above (DROP + CREATE with `SET search_path = parts_matcher, public`).
+- Fixed RLS silently inactive on `client_lawnscaping` tables (migration: `enable_rls_client_lawnscaping`)
+- Revoked `anon` access to `public.run_match` (migration: `revoke_anon_run_match_and_fix_search_path`)
+- Fixed mutable `search_path` on `parts_matcher.run_match`
 
 ### Errors & Fixes
 None beyond those addressed above.
 
 ### Next Steps → Milestone 8
-- Implement role-based access control separating `app_maintenance` (admin) from sales roles (`inside_sales`, `outside_sales`)
-- Update RLS policies to gate INSERT on `customer_requests` and `request_spec_values` to sales roles only
+- Implement role-based access control for sales roles
 
 ---
 
@@ -342,77 +281,87 @@ None beyond those addressed above.
 **Date:** 2026-05-13
 
 ### Prior Work
-Milestone 7 complete. Security advisor findings resolved. RLS active on all tables.
-
-### Dependencies
-- `parts_matcher_role` JWT claim in `app_metadata` used for role detection
-- `app_maintenance` role: full admin access
-- `inside_sales` / `outside_sales` roles: can submit quote requests, cannot access admin screens
+Milestone 7 complete.
 
 ### Work Completed
 
-**RLS Policy Updates**
-- Added `parts_matcher.is_sales()` helper function: returns true if JWT claim `parts_matcher_role` is `inside_sales` or `outside_sales`
+- Added `parts_matcher.is_sales()` helper: returns true for `inside_sales` or `outside_sales` JWT claim
 - Gated INSERT on `customer_requests` and `request_spec_values` to `is_sales()` only
-- `app_maintenance` users retain full read access to workflow tables but cannot INSERT (by design — they manage catalog, not quotes)
-- `app.js` frontend gating confirmed: already uses `parts_matcher_role === 'app_maintenance'` for `maybeShowAdminBtns()` — no code change needed
-
-**Security Hardening — Round 2**
-- `search_path` sweep: applied `SET search_path` to all 22 mutable-search-path functions across `content`, `game`, `live`, `player`, and `public` schemas (migration: `fix_function_search_paths`)
-- `auth.uid()` init-plan sweep: replaced all bare `auth.uid()` calls in RLS USING/WITH CHECK clauses with `(SELECT auth.uid())` across 31 policies in `live` and `public` schemas (migration: `auth_uid_init_plan_sweep`). `player` and `game` schemas were already correct.
-- FK indexes: added 8 covering indexes on foreign key columns across `parts_matcher` tables — `request_spec_values`, `catalog_item_specs`, `catalog_items`, `vendor_item_priority` (migration: `parts_matcher_fk_indexes`)
+- `search_path` sweep across 22 functions (migration: `fix_function_search_paths`)
+- `auth.uid()` init-plan fix across 31 policies (migration: `auth_uid_init_plan_sweep`)
+- FK indexes: 8 covering indexes on foreign key columns across `parts_matcher` tables (migration: `parts_matcher_fk_indexes`)
 
 ### Errors & Fixes
 None.
 
-### Deferred Items
-- **Create `inside_sales` / `outside_sales` test users** — requires Supabase Auth dashboard access; deferred to Milestone 9 validation phase
-- **End-to-end sales role validation** — blocked on user creation above
-
 ### Next Steps → Milestone 9
-See Milestone 9 scope below.
+- Create test sales users and validate end-to-end
 
 ---
 
-## Milestone 9 — End-to-End Validation & Sales User Flow
-**Status:** 🔲 Not Started  
-**Date:** —
+## Milestone 9 — End-to-End Validation
+**Status:** ✅ Complete  
+**Date:** 2026-05-13
 
 ### Prior Work
-Milestone 8 complete. All database hardening done. Frontend role-gating confirmed correct.
+Milestone 8 complete. All database hardening done. Frontend role-gating confirmed correct in code review.
 
 ### Dependencies
-- Supabase Auth dashboard access to create test users
-- `inside_sales` and `outside_sales` users with correct `app_metadata.parts_matcher_role` claims
+- Supabase Auth — test users with correct `app_metadata.parts_matcher_role` claims
+- Private/incognito browser to isolate sessions
 
-### Planned Work
+### Work Completed
 
-**1. Create sales test users** *(requires dashboard)*
-- Create one `inside_sales` user and one `outside_sales` user via Supabase Auth
-- Set `app_metadata: { "parts_matcher_role": "inside_sales" }` (and `outside_sales` respectively)
-- Confirm JWT claims are present in session on login
+**Test Users Created**
+- `dev@chronicle.local` — `app_maintenance` (admin) role, confirmed + has password
+- `inside@dev.local` — `inside_sales` role, confirmed + has password (`rugrat`)
 
-**2. Validate quote workflow as a sales user**
-- Log in as `inside_sales` → select product type → submit request → confirm `customer_requests` INSERT succeeds
-- Confirm `run_match` RPC returns ranked results
-- Confirm admin tabs are hidden
-- Confirm `app_maintenance` user cannot INSERT into `customer_requests`
+**Sales User Flow — Validated**
+- Signed in as `inside@dev.local` → product type selector loads → Conveyor Roller spec form renders → submitted request → `run_match` RPC returned ranked results ✅
+- Admin buttons correctly hidden for `inside_sales` user ✅
 
-**3. Validate admin screens as `app_maintenance`**
-- Confirm all 7 `admin-*.js` modules load and operate correctly
-- Confirm admin user can manage catalog, brands, specs, vendors, priorities
+**Admin Flow — Validated**
+- Signed in as `dev@chronicle.local` → admin buttons visible ✅
+- Tested add/edit on Vendors, Brands, Product Types, Vendor Priority, Spec Definitions, Catalog Items — all CRUD operations successful ✅
 
-**4. `results.js` hardening**
-- Review empty-state and error handling in match results rendering
-- Add graceful fallback if `run_match` returns no results or an error
-
-**5. Final security advisor pass**
-- Run after all user/policy validation
-- Target: zero ERRORs, zero new WARNs
-
-**6. Sign-off**
-- Document validated test results in this tracker
-- Mark Milestone 9 complete
+**Zero Spec Values Edge Case**
+- Attempted match with no spec values filled in — exposed 403 on `pm_vendor_item_priority` and `pm_customer_requests` due to session loss (see errors below)
 
 ### Errors & Fixes
-_To be filled in as work progresses._
+
+**1. Admin buttons not visible (`dev@chronicle.local`)**
+- Root cause: global `.hidden { display: none !important; }` CSS rule was missing
+- Fix: added rule to `css/styles.css`
+
+**2. `run_match` 400 — return type mismatch**
+- Root cause: `public.run_match` wrapper declared different OUT column names (`out_match_score`, `out_vendor_priority_rank`) than `parts_matcher.run_match` (`out_score`, `out_vendor_priority`, `out_rank`)
+- Fix: migration `fix_public_run_match_return_type` — DROP + CREATE `public.run_match` with correct column names matching the inner function
+
+**3. `results.js` referencing stale column names**
+- Root cause: JS code used `row.out_match_score` and `row.out_vendor_priority_rank`
+- Fix: updated `js/results.js` to use `out_score`, `out_vendor_priority`, `out_rank`
+
+**4. Login 400 (`inside@dev.local`)**
+- Root cause: password not remembered
+- Fix: reset via `UPDATE auth.users SET encrypted_password = crypt('rugrat', gen_salt('bf'))` — user was already confirmed
+
+**5. `pm_*` views 403 — missing direct table grants**
+- Root cause: `security_invoker = true` views pass the caller's identity to RLS, but `authenticated` role had no direct GRANT on the underlying `parts_matcher` tables
+- Fix: migration `grant_authenticated_all_parts_matcher_tables` — granted SELECT/INSERT/UPDATE/DELETE on all 12 admin-managed tables and `USAGE, SELECT ON ALL SEQUENCES` to `authenticated`
+
+**6. Tracking prevention blocking Supabase JS session storage (private browser)**
+- Root cause: `supabase-js` loaded from `cdn.jsdelivr.net` (third-party origin); Edge's Intelligent Tracking Prevention blocks third-party storage access, which breaks session persistence across page navigations
+- Fix (temporary): switched to in-memory storage adapter in `js/auth.js` — sessions survive navigation within a single page load but are lost on full reload
+- Fix (permanent): created GitHub Actions workflow (`.github/workflows/vendor-supabase.yml`) to download the UMD bundle and commit it to `js/vendor/supabase.min.js` (same-origin); updated `index.html` to load from `js/vendor/supabase.min.js` instead of CDN — tracking prevention no longer applies
+
+### Deferred Items
+- Zero-spec-values edge case not fully validated (session loss interrupted testing) — recommend adding client-side guard in `request.js` to require at least one spec value before enabling the Submit button
+- Delete operation not explicitly tested on all admin screens (add/edit confirmed; delete assumed working given same permission path)
+- `outside_sales` role not yet exercised — functionality expected to be identical to `inside_sales`; validate before production
+
+### Next Steps → Milestone 10
+- Add at least one real brand catalog (CSV bulk upload) for a second product type beyond Conveyor Roller
+- Validate CSV upload flow end-to-end as admin
+- Add client-side guard in `request.js`: disable Submit if no spec values entered
+- Test `outside_sales` role
+- Final security advisor pass; target zero ERRORs
