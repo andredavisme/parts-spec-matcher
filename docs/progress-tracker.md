@@ -507,3 +507,60 @@ None.
 - Update `maybeShowAdminBtns()` to use `app_maintenance` claim instead of `admin`
 - Create initial user accounts for `inside_sales` and `outside_sales` roles via Supabase Auth dashboard
 - Run security advisor after policy changes
+
+---
+
+## Milestone 8 — Role-Based Access Implementation
+**Status:** 🚧 In Progress  
+**Date:** 2026-05-13
+
+### Prior Work
+Milestone 7 complete. Role design finalized for `inside_sales`, `outside_sales`, `branch_manager`, and `app_maintenance`.
+
+### Dependencies
+- JWT `app_metadata.parts_matcher_role` claim design finalized ✅
+- Existing RLS helper pattern in place via `parts_matcher.is_admin()` ✅
+- Admin UI role gating already implemented in frontend and pending claim-name update ⚠️
+
+### Work Completed
+
+**Migration 1 — Role Helpers** (`parts_matcher_get_role_helper`)
+- Added `parts_matcher.get_role()` helper to read `app_metadata.parts_matcher_role` from the JWT
+- Updated `parts_matcher.is_admin()` to return `true` only for `app_maintenance`
+- Added `parts_matcher.is_sales()` helper returning `true` for `inside_sales`, `outside_sales`, and `branch_manager`
+
+**Auth Claim Update — Admin Test User**
+- Updated `auth.users.raw_app_meta_data` for `dev@chronicle.local`
+- Changed `parts_matcher_role` from `admin` to `app_maintenance`
+- Existing provider metadata preserved; role claim only was changed
+- User must sign out/in (or refresh token) before the new claim appears in the JWT
+
+**Migration 2 — Role-Based RLS Policies** (`parts_matcher_role_based_rls`)
+- Dropped 6 duplicate `authenticated_read` SELECT policies from:
+  - `product_categories`
+  - `product_types`
+  - `quote_templates`
+  - `quote_template_fields`
+  - `spec_definitions`
+  - `spec_units`
+- Replaced overly broad authenticated workflow policies with role-based policies on:
+  - `customer_requests`
+  - `request_spec_values`
+  - `match_results`
+- Added sales-role-only workflow access using `parts_matcher.is_sales()` for SELECT/INSERT, plus UPDATE on `customer_requests`
+- Added read-only `app_maintenance` access on workflow tables using `parts_matcher.is_admin()`
+- Result: `app_maintenance` can administer data and inspect workflow records, but cannot run the quote workflow itself via direct inserts
+
+### Errors & Fixes
+
+**Role Claim Cutover Warning**
+- Updating `parts_matcher.is_admin()` from `admin` to `app_maintenance` immediately removed admin access for any user whose JWT still carried the old `admin` value
+- **Fix:** Updated `dev@chronicle.local` app metadata to `app_maintenance` immediately after helper migration
+- **Operational note:** Existing sessions must refresh to pick up the new JWT claim
+
+### Next Steps → Milestone 8 (remaining)
+- Update `app.js` frontend gating: replace `admin` check with `app_maintenance`
+- Verify admin buttons render only for `app_maintenance`
+- Create initial user accounts for `inside_sales` and `outside_sales`
+- Run security advisor after all policy and frontend changes are complete
+- Validate quote workflow and admin screens with fresh sessions for both sales and maintenance roles
