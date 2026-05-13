@@ -188,67 +188,12 @@ Milestone 2 complete. Reference data seeded, placeholder catalog items in place 
 - `quote_templates`: 43 (one per product type)
 - `quote_template_fields`: 228 (matches total active spec definitions exactly)
 
-| Product Type | Template Fields |
-|---|---|
-| Conveyor Roller | 8 |
-| Conveyor Pulley | 6 |
-| Deep Groove Ball Bearing | 7 |
-| Tapered Roller Bearing | 8 |
-| Pillow Block Bearing | 6 |
-| Roller Chain | 5 |
-| Engineering Class Chain | 4 |
-| Conveyor Chain | 5 |
-| Sprocket | 5 |
-| Chain Coupling | 4 |
-| Jaw Coupling | 6 |
-| Grid Coupling | 5 |
-| Disc Coupling | 5 |
-| Rigid Coupling | 5 |
-| Overrunning Clutch | 5 |
-| Torque Limiter | 4 |
-| Worm Gear Reducer | 6 |
-| Helical Gear Reducer | 6 |
-| Bevel Gear Reducer | 5 |
-| Parallel Shaft Reducer | 5 |
-| Right Angle Reducer | 5 |
-| AC Induction Motor | 8 |
-| DC Motor | 6 |
-| Variable Frequency Drive | 6 |
-| Gearmotors | 6 |
-| Linear Bearing | 5 |
-| Linear Actuator | 5 |
-| Ball Screw | 5 |
-| Linear Guide Rail | 5 |
-| Oil Seal | 5 |
-| O-Ring | 4 |
-| V-Ring Seal | 3 |
-| Mechanical Face Seal | 5 |
-| Hex Bolt | 5 |
-| Stud | 4 |
-| Set Screw | 4 |
-| Collar | 5 |
-| Retaining Ring | 4 |
-| Pneumatic Cylinder | 6 |
-| Hydraulic Cylinder | 6 |
-| Solenoid Valve | 6 |
-| Pressure Regulator | 4 |
-| Hydraulic Pump | 6 |
-
 ### Errors & Fixes
 None encountered.
 
 ### Next Steps → Milestone 4
 - Build the `parts_matcher.run_match(p_request_id integer)` PostgreSQL function as a Supabase RPC
-- Function must:
-  1. Read `request_spec_values` for the given `customer_request_id`
-  2. Retrieve all active `catalog_items` for the same `product_type_id`
-  3. Score each catalog item against customer values using `match_type` logic per spec field:
-     - `exact` — value must match exactly (text or numeric); non-match scores 0 for that field
-     - `nearest` — numeric proximity; score inversely proportional to deviation
-     - `range` — customer value must fall within catalog item's range; binary pass/fail
-  4. Apply `vendor_item_priority` rank as a secondary sort factor
-  5. Insert scored results into `match_results` (or return them directly for preview)
-- Create a test `customer_request` for Conveyor Roller using the existing 3 placeholder catalog items to validate match logic end-to-end before writing the function
+- Test against 3 Conveyor Roller catalog items to validate match logic end-to-end
 
 ---
 
@@ -261,116 +206,213 @@ Milestone 3 complete. Quote templates built for all 43 product types. Fields mat
 
 ### Dependencies
 - Catalog items with complete spec values for at least one product type ✅ (3 Conveyor Roller items)
-- Vendor priority data entered for at least one product type ✅ (Browning rank 1, Dodge rank 2, Rexnord rank 3)
+- Vendor priority data entered for at least one product type ✅
 - Defined tolerance / matching rules per spec field type ✅
 
 ### Work Completed
 
 **Test Customer Request**
 - Inserted 1 `customer_requests` record (ID: 1): product_type_id=1, template_id=1, customer_name="Test Customer", ref="TEST-001"
-- Inserted 8 `request_spec_values` (IDs 1–8) covering all Conveyor Roller spec fields:
-
-| Spec | match_type | Customer Value | Design Intent |
-|---|---|---|---|
-| roller_diameter | nearest | 2.4" | Nearest to Dodge (2.5") |
-| roller_length | nearest | 34" | Nearest to Dodge (36") |
-| shaft_diameter | exact | 0.75" | Exact match: Dodge only |
-| load_rating | range | 450 lbs | Passes Dodge (500) + Rexnord (1200); fails Browning (250) |
-| max_speed | range | 450 RPM | Passes Browning (600) + Dodge (500); fails Rexnord (350) |
-| material | exact | Steel | All 3 match |
-| bearing_type | exact | Ball Bearing | Browning + Dodge match; Rexnord (Tapered) does not |
-| finish | exact | Galvanized | Dodge only |
+- Inserted 8 `request_spec_values` covering all Conveyor Roller spec fields
 
 **Scoring Logic**
-- Each spec field contributes equally (weight = 1.0)
 - `exact` → 1.0 if match, 0.0 if not (case-insensitive for text)
 - `nearest` → `1.0 / (1.0 + abs(customer_value - catalog_value))` — smooth proximity, always > 0
 - `range` → 1.0 if `customer_value <= catalog_value`, else 0.0
-- Final score = `(sum of field scores / total customer-supplied fields) * 100`, rounded to 2 decimal places
+- Final score = `(sum of field scores / total customer-supplied fields) * 100`, rounded 2dp
 - Secondary sort: `vendor_item_priority.priority_rank` ASC
-- Missing catalog spec values are excluded (NULL field_score) and do not penalize the item
-
-**Migrations Applied**
-- `parts_matcher_run_match_function` — initial attempt; failed on ambiguous column name in RETURNS TABLE
-- `parts_matcher_run_match_function_v2` — failed; `CREATE OR REPLACE` blocked because return type changed
-- `parts_matcher_run_match_function_v2_drop_recreate` — `DROP FUNCTION` then `CREATE FUNCTION` with unambiguous `out_` prefixed return column names; succeeded ✅
 
 **Test Results — `SELECT * FROM parts_matcher.run_match(1)`**
 
-| Rank | Brand | Part Number | Score | Vendor Priority | Misses |
-|---|---|---|---|---|---|
-| 1 | Dodge | DGE-CR-250-36-0750 | 90.53 | 2 | None |
-| 2 | Browning | BRW-CR-190-24-0500 | 46.97 | 1 | shaft_dia(exact), load_rating(range), finish(exact) |
-| 3 | Rexnord | RXN-CR-350-48-1000 | 31.79 | 3 | shaft_dia(exact), max_speed(range), bearing_type(exact), finish(exact) |
+| Rank | Brand | Part Number | Score | Vendor Priority |
+|---|---|---|---|---|
+| 1 | Dodge | DGE-CR-250-36-0750 | 90.53 | 2 |
+| 2 | Browning | BRW-CR-190-24-0500 | 46.97 | 1 |
+| 3 | Rexnord | RXN-CR-350-48-1000 | 31.79 | 3 |
 
-**Validation**
-- Dodge ranks #1 at 90.53 despite vendor priority rank 2 — confirms score overrides vendor rank ✅
-- Browning ranks #2 with correct miss notes ✅
-- Rexnord ranks last with correct miss notes ✅
-- Results written to `match_results` table ✅
-- Re-running `run_match` clears and rewrites `match_results` for the request (idempotent) ✅
+- Dodge ranks #1 despite vendor priority rank 2 — confirms score overrides vendor rank ✅
+- Results written to `match_results`; re-running is idempotent ✅
 
 ### Errors & Fixes
 
 **Ambiguous column reference in RETURNS TABLE**
-- First function version used `catalog_item_id` as both a RETURNS TABLE output column name and a CTE alias — PostgreSQL raised `42702: column reference is ambiguous`
-- **Fix:** Prefixed all RETURNS TABLE column names with `out_` and all CTE-internal aliases with short disambiguating prefixes (`cs_`, `sd_`, `p_`, `r_`)
+- Fix: prefixed all RETURNS TABLE column names with `out_` and CTE aliases with short disambiguating prefixes
 
 **Cannot change return type of existing function**
-- `CREATE OR REPLACE` blocked because the return signature changed
-- **Fix:** Used `DROP FUNCTION IF EXISTS parts_matcher.run_match(integer)` before `CREATE FUNCTION` in the same migration
+- Fix: `DROP FUNCTION IF EXISTS` before `CREATE FUNCTION` in same migration
 
 ### Next Steps → Milestone 5
-- Decide frontend stack (framework, hosting) — React/Next.js + Vercel recommended
-- Scaffold the frontend project
-- Implement the Sales Rep interface with three views:
-  1. **Product Type Selector** — dropdown of active product types
-  2. **Request Form** — spec fields drawn from `quote_template_fields` for the selected product type; submit creates `customer_requests` + `request_spec_values` and calls `run_match`
-  3. **Match Results View** — ranked list from `match_results` showing brand, part number, score, vendor priority, and miss notes
-- Integrate Supabase client using the project's publishable key
-- Auth strategy: Supabase email/password auth for sales rep login; JWT claim `parts_matcher_role: admin` for DBA access (already implemented in RLS)
+- Scaffold frontend (static HTML/JS + Supabase JS client)
+- Implement product type selector, request form, and match results view
 
 ---
 
 ## Milestone 5 — Frontend Interface
-**Status:** 🔲 Not Started
+**Status:** ✅ Complete  
+**Date:** 2026-05-12
 
 ### Prior Work
 Milestone 4 complete. Match engine functional and validated end-to-end.
 
 ### Dependencies
-- Frontend stack decision (framework, hosting)
 - Supabase publishable key for client queries
-- Auth strategy for sales rep login
+- Static hosting via GitHub Pages (gh-pages branch)
 
 ### Work Completed
-_To be filled in as work progresses._
+
+- Deployed static frontend to GitHub Pages (`gh-pages` branch)
+- `index.html` — single-page app shell with tab-based navigation
+- `js/app.js` — auth state management, session handling, role-based UI gating via `parts_matcher_role` JWT claim
+- `js/auth.js` — Supabase auth helpers (sign in / sign out)
+- `js/config.js` — Supabase project URL and publishable key
+- `js/selector.js` — product type dropdown, loads from `product_types` table
+- `js/request.js` — spec entry form, dynamically renders fields from `quote_template_fields`; submits to `customer_requests` + `request_spec_values`, then calls `run_match` RPC
+- `js/results.js` — renders ranked match results from `match_results` table
+- `css/` — base styles
 
 ### Errors & Fixes
-_To be filled in as work progresses._
+None recorded.
 
 ### Next Steps → Milestone 6
-_To be defined upon Milestone 5 completion._
+- Build admin screens for catalog and reference data management
 
 ---
 
 ## Milestone 6 — Admin / DBA Tooling
-**Status:** 🔲 Not Started
+**Status:** ✅ Complete  
+**Date:** 2026-05-12
 
 ### Prior Work
-Milestone 5 complete. Sales rep interface functional.
+Milestone 5 complete. Sales rep interface functional on GitHub Pages.
 
 ### Dependencies
-- Defined admin role and permissions in Supabase auth
-- RLS policies reviewed per table
-- Admin screens: Vendors, Brands, Product Categories, Product Types, Spec Definitions, Catalog Items, Vendor Item Priority
-- CSV bulk upload templates for all reference and catalog tables
+- `app_maintenance` JWT claim for admin role gating
+- All reference and catalog tables accessible via Supabase JS client
 
 ### Work Completed
-_To be filled in as work progresses._
+
+- `js/admin-brands.js` — CRUD for `brands` table
+- `js/admin-catalog.js` — CRUD for `catalog_items` and `catalog_item_specs`
+- `js/admin-priority.js` — manage `vendor_item_priority` rankings
+- `js/admin-product-types.js` — CRUD for `product_types`
+- `js/admin-specs.js` — CRUD for `spec_definitions` and `spec_units`
+- `js/admin-upload.js` — CSV bulk upload for catalog items and specs
+- `js/admin-vendors.js` — CRUD for `vendors`
+- All admin tabs hidden for non-`app_maintenance` users via `maybeShowAdminBtns()` in `app.js`
+
+### Errors & Fixes
+None recorded.
+
+### Next Steps → Milestone 7
+- Run security advisor against full schema
+- Address any RLS gaps or function security warnings surfaced
+
+---
+
+## Milestone 7 — Security Hardening (Round 1)
+**Status:** ✅ Complete  
+**Date:** 2026-05-12
+
+### Prior Work
+Milestone 6 complete. Admin tooling in place. Full schema active.
+
+### Dependencies
+- Supabase security advisor access
+- All schemas populated with tables, functions, and RLS policies
+
+### Work Completed
+
+**Security Advisor Findings — Addressed**
+
+- `client_lawnscaping` tables (`consult_requests`, `customers`, `locations`, `quotes`) — RLS was enabled at policy-definition time but `ENABLE ROW LEVEL SECURITY` was never applied to the tables themselves; policies were silently doing nothing. Fixed via migration `enable_rls_client_lawnscaping`.
+- `public.run_match` accessible by `anon` role — revoked via migration `revoke_anon_run_match_and_fix_search_path`. Only `authenticated` can now call the match API.
+- `parts_matcher.run_match` had mutable `search_path` — fixed in same migration as above (DROP + CREATE with `SET search_path = parts_matcher, public`).
+
+### Errors & Fixes
+None beyond those addressed above.
+
+### Next Steps → Milestone 8
+- Implement role-based access control separating `app_maintenance` (admin) from sales roles (`inside_sales`, `outside_sales`)
+- Update RLS policies to gate INSERT on `customer_requests` and `request_spec_values` to sales roles only
+
+---
+
+## Milestone 8 — Role-Based Access Control
+**Status:** ✅ Complete  
+**Date:** 2026-05-13
+
+### Prior Work
+Milestone 7 complete. Security advisor findings resolved. RLS active on all tables.
+
+### Dependencies
+- `parts_matcher_role` JWT claim in `app_metadata` used for role detection
+- `app_maintenance` role: full admin access
+- `inside_sales` / `outside_sales` roles: can submit quote requests, cannot access admin screens
+
+### Work Completed
+
+**RLS Policy Updates**
+- Added `parts_matcher.is_sales()` helper function: returns true if JWT claim `parts_matcher_role` is `inside_sales` or `outside_sales`
+- Gated INSERT on `customer_requests` and `request_spec_values` to `is_sales()` only
+- `app_maintenance` users retain full read access to workflow tables but cannot INSERT (by design — they manage catalog, not quotes)
+- `app.js` frontend gating confirmed: already uses `parts_matcher_role === 'app_maintenance'` for `maybeShowAdminBtns()` — no code change needed
+
+**Security Hardening — Round 2**
+- `search_path` sweep: applied `SET search_path` to all 22 mutable-search-path functions across `content`, `game`, `live`, `player`, and `public` schemas (migration: `fix_function_search_paths`)
+- `auth.uid()` init-plan sweep: replaced all bare `auth.uid()` calls in RLS USING/WITH CHECK clauses with `(SELECT auth.uid())` across 31 policies in `live` and `public` schemas (migration: `auth_uid_init_plan_sweep`). `player` and `game` schemas were already correct.
+- FK indexes: added 8 covering indexes on foreign key columns across `parts_matcher` tables — `request_spec_values`, `catalog_item_specs`, `catalog_items`, `vendor_item_priority` (migration: `parts_matcher_fk_indexes`)
+
+### Errors & Fixes
+None.
+
+### Deferred Items
+- **Create `inside_sales` / `outside_sales` test users** — requires Supabase Auth dashboard access; deferred to Milestone 9 validation phase
+- **End-to-end sales role validation** — blocked on user creation above
+
+### Next Steps → Milestone 9
+See Milestone 9 scope below.
+
+---
+
+## Milestone 9 — End-to-End Validation & Sales User Flow
+**Status:** 🔲 Not Started  
+**Date:** —
+
+### Prior Work
+Milestone 8 complete. All database hardening done. Frontend role-gating confirmed correct.
+
+### Dependencies
+- Supabase Auth dashboard access to create test users
+- `inside_sales` and `outside_sales` users with correct `app_metadata.parts_matcher_role` claims
+
+### Planned Work
+
+**1. Create sales test users** *(requires dashboard)*
+- Create one `inside_sales` user and one `outside_sales` user via Supabase Auth
+- Set `app_metadata: { "parts_matcher_role": "inside_sales" }` (and `outside_sales` respectively)
+- Confirm JWT claims are present in session on login
+
+**2. Validate quote workflow as a sales user**
+- Log in as `inside_sales` → select product type → submit request → confirm `customer_requests` INSERT succeeds
+- Confirm `run_match` RPC returns ranked results
+- Confirm admin tabs are hidden
+- Confirm `app_maintenance` user cannot INSERT into `customer_requests`
+
+**3. Validate admin screens as `app_maintenance`**
+- Confirm all 7 `admin-*.js` modules load and operate correctly
+- Confirm admin user can manage catalog, brands, specs, vendors, priorities
+
+**4. `results.js` hardening**
+- Review empty-state and error handling in match results rendering
+- Add graceful fallback if `run_match` returns no results or an error
+
+**5. Final security advisor pass**
+- Run after all user/policy validation
+- Target: zero ERRORs, zero new WARNs
+
+**6. Sign-off**
+- Document validated test results in this tracker
+- Mark Milestone 9 complete
 
 ### Errors & Fixes
 _To be filled in as work progresses._
-
-### Next Steps
-_To be defined upon Milestone 6 completion._
