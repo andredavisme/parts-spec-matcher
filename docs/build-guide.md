@@ -66,7 +66,7 @@ Describe the core workflow from the perspective of a real user. Walk through a s
 - Each action the user takes
 - What the system returns
 - Any backend roles (e.g., database administrator)
-- The stated objective (the “why”)
+- The stated objective (the "why")
 
 **Example:**
 ```
@@ -127,7 +127,7 @@ From a well-formed setup prompt, Perplexity will:
 2. Identify the correct Supabase project and confirm its ID
 3. Identify the GitHub account and create or target the specified repository
 4. Push a full documentation suite to the repo in a single commit:
-   - `README.md` — project overview, user roles, workflow, tech stack, doc index
+   - `README.md` — project overview, user roles, workflow summary, tech stack
    - `docs/product-objective.md` — business problem, scope, success criteria
    - `docs/data-architecture.md` — schema design, entities, vendor logic, integrity rules
    - `docs/quote-workflow.md` — end-to-end workflow with a worked example
@@ -152,37 +152,106 @@ Database schema changes are applied via Supabase's `apply_migration` tool, which
 
 ---
 
-## Admin Access Pattern
+## Role-Based Access Pattern
 
-This project uses a **JWT app_metadata claim** to control administrator write access, rather than a separate Supabase role or a dedicated admin table. This pattern works well for internal tools on a shared Supabase project where creating custom database roles is impractical.
+This project uses **JWT `app_metadata` claims** to control access, rather than a separate Supabase role or a dedicated admin table. This pattern works well for internal tools on a shared Supabase project where creating custom database roles is impractical.
 
-### How It Works
+### Role Claim Design
 
-1. A helper function `parts_matcher.is_admin()` reads the authenticated user's JWT:
-   ```sql
-   SELECT coalesce(
-     (auth.jwt() -> 'app_metadata' ->> 'parts_matcher_role') = 'admin',
-     false
-   );
-   ```
-2. RLS policies on all reference and catalog tables use this function in their `USING` and `WITH CHECK` clauses
-3. Standard `authenticated` users get read-only access; only users with the claim get write access
+Each user carries a single `parts_matcher_role` string claim in their JWT `app_metadata`. Current valid values:
 
-### Granting Admin Access
+| Claim Value | Role | Access Level |
+|---|---|---|
+| `app_maintenance` | App Maintenance | Full admin / DBA tooling; read-only on workflow tables; cannot run quote workflow |
+| `inside_sales` | Inside Sales Rep | Run quote workflow; view own requests and match results |
+| `outside_sales` | Outside Sales Rep | Same as inside_sales |
+| `branch_manager` | Branch Manager | Same as sales; branch-wide request visibility (deferred — requires branch scoping) |
+
+Future roles reserved but not yet implemented: `regional_manager`, `accounting`, `customer`.
+
+### Helper Functions
+
+Three helper functions live in the `parts_matcher` schema and are used by RLS policies:
+
+```sql
+-- Returns the raw role claim string from the JWT
+CREATE OR REPLACE FUNCTION parts_matcher.get_role()
+  RETURNS text LANGUAGE sql STABLE SECURITY DEFINER
+  SET search_path TO 'parts_matcher'
+AS $$
+  SELECT coalesce(
+    auth.jwt() -> 'app_metadata' ->> 'parts_matcher_role',
+    ''
+  );
+$$;
+
+-- Returns true for app_maintenance (admin / DBA tooling access)
+CREATE OR REPLACE FUNCTION parts_matcher.is_admin()
+  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+  SET search_path TO 'parts_matcher'
+AS $$
+  SELECT parts_matcher.get_role() = 'app_maintenance';
+$$;
+
+-- Returns true for sales roles (quote workflow access)
+CREATE OR REPLACE FUNCTION parts_matcher.is_sales()
+  RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+  SET search_path TO 'parts_matcher'
+AS $$
+  SELECT parts_matcher.get_role() IN ('inside_sales', 'outside_sales', 'branch_manager');
+$$;
+```
+
+### RLS Policy Pattern
+
+RLS policies on `parts_matcher` tables use these helpers in their `USING` and `WITH CHECK` clauses:
+
+- **Reference/catalog tables** (vendors, brands, product types, spec definitions, catalog items, etc.): all authenticated users can SELECT; only `app_maintenance` can INSERT/UPDATE/DELETE
+- **Workflow tables** (customer_requests, request_spec_values, match_results): only `is_sales()` users can INSERT and SELECT; `app_maintenance` has read-only SELECT
+
+### Granting a Role
 
 In the Supabase dashboard:
 1. Go to **Authentication → Users**
 2. Select the user
 3. Edit **App Metadata** and add:
    ```json
-   { "parts_matcher_role": "admin" }
+   { "parts_matcher_role": "app_maintenance" }
    ```
-4. The user's next authenticated request will carry the updated claim
+   (or the appropriate role value for that user)
+4. The user must sign out and back in for the new claim to appear in their JWT
+
+Alternatively, via SQL:
+```sql
+UPDATE auth.users
+SET raw_app_meta_data = raw_app_meta_data || '{"parts_matcher_role": "inside_sales"}'
+WHERE email = 'user@example.com';
+```
+
+### Frontend Role Check
+
+The frontend reads the role from the session JWT to control UI visibility:
+
+```javascript
+// Show admin tooling only for app_maintenance
+function maybeShowAdminBtns(session) {
+  const meta = session && session.user && session.user.app_metadata;
+  const isAdmin = meta && meta.parts_matcher_role === 'app_maintenance';
+  ['admin-vendors-btn', 'admin-brands-btn', 'admin-pt-btn',
+   'admin-priority-btn', 'admin-catalog-btn', 'admin-specs-btn',
+   'admin-upload-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.classList.toggle('hidden', !isAdmin);
+  });
+}
+```
 
 ### Why This Approach
 - No custom PostgreSQL roles needed
 - Claim is project-namespaced (`parts_matcher_role`) so it does not conflict with claims used by other schemas on the same Supabase instance
-- Revocable instantly by removing the claim from app_metadata
+- Revocable instantly by removing or changing the claim in `app_metadata`
+- New roles can be added by extending `is_sales()` or adding a new helper — no existing policies need rewriting
 - Reusable pattern: any future schema on this instance can define its own namespaced claim
 
 ---
@@ -232,11 +301,7 @@ if (!session) { /* show login view */ }
 ```
 
 - Sales rep accounts are created in the Supabase dashboard under **Authentication → Users**
-- Admin access is granted by adding `{ "parts_matcher_role": "admin" }` to a user's **App Metadata**
-- The frontend checks for the admin claim to show/hide admin UI elements:
-  ```javascript
-  const isAdmin = session?.user?.app_metadata?.parts_matcher_role === 'admin';
-  ```
+- Role access is granted by adding the appropriate `parts_matcher_role` value to a user's **App Metadata** (see Role-Based Access Pattern above)
 
 ### Non-Public Schema Access Pattern
 
