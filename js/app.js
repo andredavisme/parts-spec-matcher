@@ -160,7 +160,7 @@ async function init() {
 
 function maybeShowAdminBtns(session) {
   const meta = session && session.user && session.user.app_metadata;
-  const isAdmin = meta && meta.parts_matcher_role === 'admin';
+  const isAdmin = meta && meta.parts_matcher_role === 'app_maintenance';
   [
     'admin-vendors-btn',
     'admin-brands-btn',
