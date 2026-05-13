@@ -430,8 +430,80 @@ Milestone 5 complete. Sales rep interface validated end-to-end. Conveyor Roller 
 - **Process improvement:** Capture AI responses before deleting a thread and include them in the new thread prompt. See recovery procedure in `docs/build-guide.md`.
 
 ### Next Steps → Milestone 7
-- Populate real catalog data via CSV upload for remaining product types (currently only Conveyor Roller, Deep Groove Ball Bearing, Pillow Block Bearing, and Roller Chain have catalog items)
-- Run a full end-to-end test of each admin screen against the live database
-- Add additional users (sales rep accounts) via the Supabase Auth dashboard
+- Define and implement role-based access control
+- Add sales rep users via the Supabase Auth dashboard
 - Consider adding a `#view-admin-units` screen for managing `spec_units` if new units are needed
 - Run security advisor after any additional schema changes
+- Populate real catalog data via CSV upload for remaining product types (deferred — CSV load confirmed working)
+
+---
+
+## Milestone 7 — Role-Based Access Design
+**Status:** ✅ Complete  
+**Date:** 2026-05-13
+
+### Prior Work
+Milestone 6 complete. Admin / DBA tooling is live. Current authorization model distinguishes only between authenticated users and admin users via JWT `app_metadata.parts_matcher_role = admin`.
+
+### Dependencies
+- Supabase Auth with JWT `app_metadata` claims already in use for admin gating ✅
+- RLS policies already active on all `parts_matcher` tables ✅
+- Admin UI role gating already implemented in frontend via `maybeShowAdminBtns()` in `app.js` ✅
+
+### Work Completed
+
+**Role Scoping Decision**
+- In-scope roles for current phase (to be implemented in Milestone 8):
+  - `inside_sales`
+  - `outside_sales`
+  - `branch_manager`
+  - `app_maintenance`
+- Reserved for future implementation — not built yet but accounted for in design:
+  - `regional_manager`
+  - `accounting`
+  - `customer`
+
+**Authorization Direction**
+- Confirmed: role handling continues to use Supabase JWT `app_metadata` claims, consistent with the existing `admin` pattern
+- No separate role table introduced at this stage; role is a single string claim on each user
+- Design must accommodate future role addition without rewriting existing policies
+- Branch / region scoping explicitly deferred; current design should allow `branch_id` and `region_id` to be added later without restructuring authorization
+
+**spec_units Clarification**
+- `spec_units` is a controlled vocabulary table (12 rows seeded) that restricts unit values on `spec_definitions` (e.g., `inches`, `mm`, `lbs`, `RPM`)
+- No `#view-admin-units` screen exists yet; new units currently require SQL
+- Adding the admin screen is low priority — only needed when new catalog types require units not already seeded
+
+**Permission Model (planned for Milestone 8)**
+
+| Capability | inside_sales | outside_sales | branch_manager | app_maintenance |
+|---|:---:|:---:|:---:|:---:|
+| Login to app | ✅ | ✅ | ✅ | ✅ |
+| Select product type & run quote workflow | ✅ | ✅ | ✅ | ❌ |
+| View own requests & match results | ✅ | ✅ | ✅ | ❌ |
+| View all requests (branch-wide) | ❌ | ❌ | ✅ (deferred) | ❌ |
+| Admin: catalog & spec data | ❌ | ❌ | ❌ | ✅ |
+| Admin: vendors, brands, product types | ❌ | ❌ | ❌ | ✅ |
+| Admin: vendor priority rules | ❌ | ❌ | ❌ | ✅ |
+| CSV upload | ❌ | ❌ | ❌ | ✅ |
+
+> Branch-wide request visibility for `branch_manager` requires a `branch_id` column on `customer_requests` and user profiles — deferred until branch scoping is implemented.
+
+**Future Role Placeholders**
+
+| Role | Planned Access |
+|---|---|
+| `regional_manager` | Branch manager access across all branches in region; vendor priority editing |
+| `accounting` | Read-only access to requests and match results; pricing/cost data (not yet in schema) |
+| `customer` | Submit spec values for their own requests; view their own request history |
+
+### Errors & Fixes
+None.
+
+### Next Steps → Milestone 8
+- Implement RLS helper functions: `parts_matcher.get_role()` returning the JWT claim value
+- Add role-specific RLS policies to all relevant `parts_matcher` tables
+- Update `app.js` frontend gating: replace `admin` check with `app_maintenance` check for admin screen visibility
+- Update `maybeShowAdminBtns()` to use `app_maintenance` claim instead of `admin`
+- Create initial user accounts for `inside_sales` and `outside_sales` roles via Supabase Auth dashboard
+- Run security advisor after policy changes
