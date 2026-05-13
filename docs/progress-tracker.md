@@ -511,7 +511,7 @@ None.
 ---
 
 ## Milestone 8 — Role-Based Access Implementation
-**Status:** 🚧 In Progress  
+**Status:** ✅ Complete  
 **Date:** 2026-05-13
 
 ### Prior Work
@@ -551,6 +551,16 @@ Milestone 7 complete. Role design finalized for `inside_sales`, `outside_sales`,
 - Added read-only `app_maintenance` access on workflow tables using `parts_matcher.is_admin()`
 - Result: `app_maintenance` can administer data and inspect workflow records, but cannot run the quote workflow itself via direct inserts
 
+**Frontend Update — Admin Claim Name** (`app.js`, `gh-pages` branch)
+- Updated `maybeShowAdminBtns()` in `app.js` to check `app_maintenance` instead of `admin`
+- Admin buttons now correctly gated on the new role name
+
+**Security Fix — Revoke `anon` Execute on `public.run_match`** (`revoke_anon_execute_run_match`)
+- Security advisor flagged `public.run_match(integer)` as callable by `anon` (unauthenticated users)
+- Migration applied: `REVOKE EXECUTE ON FUNCTION public.run_match(integer) FROM anon`
+- `run_match` is now only callable by `authenticated` users
+- Other security advisor findings are in unrelated schemas (`player`, `game`, `analytix`, `client_lawnscaping`) and were not actioned
+
 ### Errors & Fixes
 
 **Role Claim Cutover Warning**
@@ -558,9 +568,10 @@ Milestone 7 complete. Role design finalized for `inside_sales`, `outside_sales`,
 - **Fix:** Updated `dev@chronicle.local` app metadata to `app_maintenance` immediately after helper migration
 - **Operational note:** Existing sessions must refresh to pick up the new JWT claim
 
-### Next Steps → Milestone 8 (remaining)
-- Update `app.js` frontend gating: replace `admin` check with `app_maintenance`
-- Verify admin buttons render only for `app_maintenance`
-- Create initial user accounts for `inside_sales` and `outside_sales`
-- Run security advisor after all policy and frontend changes are complete
-- Validate quote workflow and admin screens with fresh sessions for both sales and maintenance roles
+### Next Steps → Milestone 9
+- Create real sales rep user accounts (`inside_sales`, `outside_sales`) via Supabase Auth dashboard (manual — deferred from this session)
+- Validate quote workflow end-to-end with a fresh `inside_sales` session
+- Validate admin screens with a fresh `app_maintenance` session
+- Consider `#view-admin-units` screen if new spec unit types are needed
+- Consider branch scoping (`branch_id` on `customer_requests`) when multi-branch rollout begins
+- Populate real catalog data via CSV upload for remaining product types
