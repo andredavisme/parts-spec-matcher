@@ -657,6 +657,7 @@ These are real errors encountered during development. Reading them before you en
 | Wrong `RETURNS TABLE` column names | Frontend used `out_brand_name`; actual column was `out_brand` | Updated JS to match actual signature | After writing any function, document exact return column names immediately |
 | Role claim cutover | Updating `is_admin()` from `'admin'` to `'app_maintenance'` broke existing sessions | Updated user metadata immediately; users refreshed sessions | Plan claim renames carefully; update all users before deploying the policy change |
 | Spec value column mismatch | `admin-catalog.js` wrote to `spec_value` (doesn't exist); actual columns are `value_numeric` / `value_text` | Added `catResolveSpecValue()` and `catSpecDisplayValue()` helpers | Verify column names against schema before writing insert code |
+| CSV upload column name mismatch | AI-generated CSVs used `product_type_id`, `spec_name`, `value` — none of which matched the actual template headers (`product_type_name`, `spec_field_name`, `spec_value`) | Downloaded templates from admin screen; regenerated CSVs to match exact headers | Always download the CSV template first; generate data to match the template, not the other way around |
 
 ---
 
@@ -756,4 +757,4 @@ The guide should always reflect how the system actually works. If the code and t
 
 ---
 
-*Last updated: 2026-05-13 — parts-spec-matcher*
+*Last updated: 2026-05-14 — Appendix A: added CSV upload column name mismatch lesson (Milestone 9)*
