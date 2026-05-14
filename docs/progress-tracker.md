@@ -575,3 +575,80 @@ Milestone 7 complete. Role design finalized for `inside_sales`, `outside_sales`,
 - Consider `#view-admin-units` screen if new spec unit types are needed
 - Consider branch scoping (`branch_id` on `customer_requests`) when multi-branch rollout begins
 - Populate real catalog data via CSV upload for remaining product types
+
+---
+
+## Milestone 9 — Catalog Data Loading
+**Status:** 🔄 In Progress  
+**Date Started:** 2026-05-14
+
+### Prior Work
+Milestone 8 complete. Role-based access control implemented. `app_maintenance`, `inside_sales`, `outside_sales`, and `branch_manager` roles defined. Frontend admin gate updated to use `app_maintenance` claim. `run_match` RPC secured against anonymous access.
+
+### Dependencies
+- CSV upload screen live and validated ✅
+- `pm_*` wrapper views in place for all catalog tables ✅
+- `app_maintenance` user (`dev@chronicle.local`) confirmed working ✅
+- GitHub Issue [#1](https://github.com/andredavisme/parts-spec-matcher/issues/1) created to track all 43 product types
+
+### Catalog Loading Process (established this session)
+Per-product-type workflow:
+1. Pull spec definitions from DB for the product type
+2. Generate representative catalog items (AI-assisted or from source catalog)
+3. Format as two CSVs matching the downloaded templates:
+   - `catalog_items`: `product_type_name, brand_name, part_number, description, is_active`
+   - `catalog_item_specs`: `part_number, brand_name, spec_field_name, spec_value`
+4. Upload via Admin → CSV Upload screen (preview → commit)
+5. Run a test quote request and confirm match results score correctly
+6. Set vendor priority rules for the product type if not already in place
+7. Check off the product type on Issue #1
+
+> **CSV Column Lesson Learned:** The first CSV attempt used incorrect column names (`product_type_id`, `spec_name`, `value`) that did not match the actual template headers. Always download the template from the admin screen first and match column names exactly before generating data.
+
+### Work Completed — Session 1 (2026-05-14)
+
+**Infrastructure**
+- Created GitHub Issue #1: [Milestone 9 — Catalog Data Loading (All Product Types)](https://github.com/andredavisme/parts-spec-matcher/issues/1)
+- Established per-product-type loading process (documented above)
+- Confirmed CSV template column schema from downloaded templates:
+  - `catalog_items`: `product_type_name, brand_name, part_number, description, is_active`
+  - `catalog_item_specs`: `part_number, brand_name, spec_field_name, spec_value`
+
+**Deep Groove Ball Bearing — ✅ Complete**
+- Spec fields (7 total): `bore_diameter` (exact/mm), `outer_diameter` (exact/mm), `width` (exact/mm), `dynamic_load` (range/kg), `static_load` (range/kg), `max_speed` (range/RPM), `seal_type` (exact)
+- 10 new catalog items added across 4 brands: SKF, NSK, FAG, Timken
+- Items span common bore sizes: 17mm, 25mm, 35mm, 50mm
+- Sealed and shielded variants represented
+- Upload validated: match engine returned correctly ranked results ✅
+
+| Part Number | Brand | Bore | OD | Width | Seal |
+|---|---|---|---|---|---|
+| 6203-2RS | SKF | 17mm | 40mm | 12mm | sealed |
+| 6207-2RS | SKF | 35mm | 72mm | 17mm | sealed |
+| 6210-2RS | SKF | 50mm | 90mm | 20mm | sealed |
+| 6203-2Z | NSK | 17mm | 40mm | 12mm | shielded |
+| 6210-2Z | NSK | 50mm | 90mm | 20mm | shielded |
+| 6205-2RSR | FAG | 25mm | 52mm | 15mm | sealed |
+| 6207-2RSR | FAG | 35mm | 72mm | 17mm | sealed |
+| 205PP | Timken | 25mm | 52mm | 15mm | sealed |
+| 207PP | Timken | 35mm | 72mm | 17mm | sealed |
+| 210PP | Timken | 50mm | 90mm | 20mm | sealed |
+
+**Catalog Item Counts as of Session 1**
+- Total active catalog items: 18 (8 pre-existing + 10 new)
+- Product types with data: 5 of 43
+
+### Errors & Fixes
+
+**CSV column name mismatch**
+- AI-generated CSVs used column names that did not match actual template headers (`product_type_id` vs `product_type_name`, `spec_name` vs `spec_field_name`, `value` vs `spec_value`)
+- **Fix:** Downloaded templates from the admin screen, identified correct headers, regenerated both CSVs
+- **Process improvement:** Always download templates first; generate data to match them, not the other way around
+
+### Next Steps
+- Continue loading one product type per session using the established process
+- Priority order (suggested): complete Bearings category first (Tapered Roller Bearing, Pillow Block Bearing expansion), then Chain & Sprockets
+- Set vendor priority rules for Deep Groove Ball Bearing brands (SKF, NSK, FAG, Timken)
+- Create real sales rep user accounts (`inside_sales`, `outside_sales`) — deferred from Milestone 8
+- Validate quote workflow end-to-end with a fresh `inside_sales` session
+- See Issue [#1](https://github.com/andredavisme/parts-spec-matcher/issues/1) for full product type checklist
