@@ -34,6 +34,94 @@ function bindLogout(ids) {
   });
 }
 
+// ── Customer request submit override ──────────────────────────────────────────
+// Wraps request.js initRequestForm so the inserted pm_part_requests row
+// uses initiated_by='customer' and records customer_email from the session.
+// The sales_rep field is set to null; customer_name is unused in this portal.
+const _origInitRequestForm = initRequestForm;
+
+async function initRequestForm(productTypeId, productTypeName) {
+  // Let request.js build the form fields as normal
+  await _origInitRequestForm(productTypeId, productTypeName);
+
+  // Now replace the form's onsubmit with a customer-aware version
+  const form      = document.getElementById('request-form');
+  const errorEl   = document.getElementById('request-error');
+  const submitBtn = document.getElementById('request-submit-btn');
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    errorEl.classList.add('hidden');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Finding matches\u2026';
+
+    try {
+      const session    = await getSession();
+      const userEmail  = session.user.email;
+      const customerRef = document.getElementById('customer-ref')?.value.trim() || null;
+
+      // Insert request with customer context
+      const { data: reqData, error: reqError } = await sbClient
+        .from('pm_part_requests')
+        .insert({
+          product_type_id: productTypeId,
+          template_id:     currentTemplate.id,
+          customer_name:   null,
+          customer_ref:    customerRef,
+          customer_email:  userEmail,
+          sales_rep:       null,
+          initiated_by:    'customer',
+          status:          'open'
+        })
+        .select('id')
+        .single();
+      if (reqError) throw reqError;
+      const requestId = reqData.id;
+
+      // Insert spec values
+      const specValues = [];
+      currentFields.forEach(field => {
+        const sd    = field.pm_spec_definitions;
+        const input = document.getElementById(`field-${sd.id}`);
+        if (!input || input.value === '') return;
+        const isNum = sd.match_type === 'nearest' || sd.match_type === 'range';
+        specValues.push({
+          request_id:          requestId,
+          spec_definition_id:  sd.id,
+          value_text:          isNum ? null : input.value.trim(),
+          value_numeric:       isNum ? parseFloat(input.value) : null
+        });
+      });
+
+      if (specValues.length > 0) {
+        const { error: valError } = await sbClient
+          .from('pm_request_spec_values')
+          .insert(specValues);
+        if (valError) throw valError;
+      }
+
+      // Run match
+      const { data: matchData, error: matchError } = await sbClient
+        .rpc('run_match', { p_request_id: requestId });
+      if (matchError) throw matchError;
+
+      window.currentRequestId       = requestId;
+      window.currentMatchResults    = matchData;
+      window.currentProductTypeName = productTypeName;
+      showView('view-results');
+      renderResults(matchData, productTypeName);
+
+    } catch (err) {
+      errorEl.textContent = 'Error: ' + err.message;
+      errorEl.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Find Matches \u2192';
+    }
+  };
+}
+// ───────────────────────────────────────────────────────────────────────────────
+
 async function initCustomerApp() {
   const session = await getSession();
 
@@ -121,13 +209,9 @@ async function initCustomerApp() {
   document.getElementById('results-print-btn').addEventListener('click', () => {
     window.print();
   });
-
-  // ── Override request.js submit to go to customer results view ──
-  // request.js calls showView('view-results') and renderResults() — these work
-  // as-is since the HTML IDs match. No override needed.
 }
 
-// Customer-scoped selector: only active product types with a template
+// Customer-scoped selector: active product types only
 async function initCustomerSelector() {
   const sel     = document.getElementById('product-type-select');
   const errorEl = document.getElementById('selector-error');
