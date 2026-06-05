@@ -661,18 +661,69 @@ All original tables remain in place as a safety net and are not modified. New ta
 - Postgres rejected the statement: `cannot change name of view column`
 - **Fix:** Used `DROP VIEW IF EXISTS` followed by `CREATE VIEW` in the same migration
 
-### Current State of Old Tables
-The following original tables are **orphaned** (no live code references them) but remain in the database as a safety net:
-- `customer_requests`
-- `quote_template_fields`
-- `match_results`
-- `vendor_item_priority`
-
-These should be dropped once the new tables are validated in production.
-
 ### Next Steps → Milestone 10
-- Drop orphaned original tables (`customer_requests`, `quote_template_fields`, `match_results`, `vendor_item_priority`)
-- Update frontend JS files to reference new table/view names where applicable
+~~- Drop orphaned original tables (`customer_requests`, `quote_template_fields`, `match_results`, `vendor_item_priority`)~~  ✅ Done in Milestone 10
+~~- Update frontend JS files to reference new table/view names where applicable~~  ✅ Done in Milestone 10
 - Seed `distributors` and `manufacturer_authorizations` with Easternia data
 - Build customer portal views and flow (`#view-portal-*`)
 - Update `run_match()` to write results to `spec_match_results` and pass `distributor_id` context
+
+---
+
+## Milestone 10 — Schema Cleanup & Frontend Reference Updates
+**Status:** ✅ Complete  
+**Date:** 2026-06-05
+
+### Prior Work
+Milestone 9 complete. New tables in place, views rerouted, RLS applied. Four original tables orphaned and flagged for removal. Frontend JS files still referencing old view names.
+
+### Dependencies
+- All FK references to old tables resolved before dropping ✅ (checked via `information_schema`)
+- New tables validated with live data copied over ✅
+- No application code paths reaching old tables ✅
+
+### Work Completed
+
+**FK Re-pointing Before Drop**
+Before dropping the old tables, two FK constraints from other tables were identified pointing at `customer_requests` and needed re-pointing to `part_requests`:
+
+| Table | Column | Was → to | Now → to |
+|---|---|---|---|
+| `request_spec_values` | `request_id` | `customer_requests` | `part_requests` |
+| `customer_rfq_requests` | `customer_request_id` | `customer_requests` | `part_requests` |
+
+- `customer_rfq_requests` constraint also renamed from `customer_rfq_requests_customer_request_id_fkey` to `customer_rfq_requests_part_request_id_fkey` for consistency
+- `match_results.request_id` FK to `customer_requests` was dropped along with the table (no re-pointing needed)
+
+**Migration — Drop Old Tables** (`parts_matcher_drop_old_tables`)
+- `DROP TABLE parts_matcher.match_results CASCADE`
+- `DROP TABLE parts_matcher.quote_template_fields CASCADE`
+- `DROP TABLE parts_matcher.vendor_item_priority CASCADE`
+- `DROP TABLE parts_matcher.customer_requests CASCADE`
+- All four drops successful; no orphaned constraints remain
+
+**Frontend JS Updates** (commit `851fd0e`, `gh-pages` branch)
+
+Three files updated in a single commit:
+
+| File | Changes |
+|---|---|
+| `js/request.js` | `pm_quote_template_fields` → `pm_spec_intake_fields`; `pm_customer_requests` → `pm_part_requests`; added `initiated_by: 'sales_rep'` to insert payload |
+| `js/admin-priority.js` | `pm_vendor_item_priority` → `pm_distributor_priority` (3 occurrences: load, delete, save) |
+| `js/admin-specs.js` | `pm_quote_template_fields` → `pm_spec_intake_fields` in the on-insert auto-create block inside `saveSpec()` |
+
+Files confirmed unchanged (no old view references): `results.js`, `admin-catalog.js`, `admin-upload.js`, `app.js`, `admin-vendors.js`, `admin-brands.js`, `admin-product-types.js`, `selector.js`.
+
+### Errors & Fixes
+
+**FK check required before drop**
+- Attempted to assess whether a direct DROP was safe — found 3 FK constraints referencing `customer_requests` from other tables (`request_spec_values`, `match_results`, `customer_rfq_requests`)
+- `match_results` was itself being dropped, so only 2 FKs needed re-pointing
+- **Fix:** Re-pointed both FKs in the same migration as the DROP, executed as a single transaction
+
+### Next Steps → Milestone 11
+- Seed `distributors` table with Eastern Industrial Automation record (and any additional distributors)
+- Seed `manufacturer_authorizations` linking EIA to existing brands + product types
+- Validate end-to-end quote workflow with a fresh sales rep session to confirm `pm_part_requests` and `pm_spec_intake_fields` are working correctly
+- Build customer portal views and flow (`#view-portal-*`)
+- Update `run_match()` to write results to `spec_match_results` and accept optional `distributor_id` parameter
