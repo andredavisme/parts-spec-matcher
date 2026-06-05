@@ -13,7 +13,7 @@ async function initAdminPriority() {
   const errorEl   = document.getElementById('prio-error');
   const wrapEl    = document.getElementById('prio-table-wrap');
 
-  loadingEl.textContent = 'Loading…';
+  loadingEl.textContent = 'Loading\u2026';
   loadingEl.classList.remove('hidden');
   errorEl.classList.add('hidden');
   wrapEl.classList.add('hidden');
@@ -32,7 +32,7 @@ async function initAdminPriority() {
 
 async function loadPrioRefData() {
   const [prioRes, vendorsRes, ptsRes, brandsRes] = await Promise.all([
-    sbClient.from('pm_vendor_item_priority').select('id, vendor_id, product_type_id, brand_id, priority_rank, notes').order('product_type_id').order('priority_rank'),
+    sbClient.from('pm_distributor_priority').select('id, vendor_id, product_type_id, brand_id, priority_rank, notes').order('product_type_id').order('priority_rank'),
     sbClient.from('pm_vendors').select('id, name').eq('is_active', true).order('name'),
     sbClient.from('pm_product_types').select('id, name, category_id').eq('is_active', true).order('name'),
     sbClient.from('pm_brands').select('id, name').eq('is_active', true).order('name')
@@ -104,7 +104,7 @@ function renderPrioTable() {
         <td>${vendorMap[r.vendor_id] || `Vendor ${r.vendor_id}`}</td>
         <td>${r.brand_id ? (brandMap[r.brand_id] || `Brand ${r.brand_id}`) : '<span style="color:#bbb">Any</span>'}</td>
         <td style="text-align:center"><strong>${r.priority_rank}</strong></td>
-        <td class="desc-cell">${r.notes || '<span style="color:#bbb">—</span>'}</td>
+        <td class="desc-cell">${r.notes || '<span style="color:#bbb">\u2014</span>'}</td>
         <td class="col-actions">
           <button class="btn-edit" data-id="${r.id}">Edit</button>
           <button class="btn-deactivate" data-id="${r.id}">Delete</button>
@@ -126,7 +126,7 @@ async function deletePrioRule(id) {
   const item = prioItems.find(r => r.id === id);
   if (!item) return;
   if (!confirm('Delete this priority rule?')) return;
-  const { error } = await sbClient.from('pm_vendor_item_priority').delete().eq('id', id);
+  const { error } = await sbClient.from('pm_distributor_priority').delete().eq('id', id);
   if (error) { showPrioError(error.message); return; }
   prioItems = prioItems.filter(r => r.id !== id);
   showPrioSuccess('Priority rule deleted.');
@@ -162,7 +162,7 @@ function openPrioModal(id) {
 
   // Brand dropdown (optional)
   const brandSel = document.getElementById('prio-modal-brand');
-  brandSel.innerHTML = '<option value="">— Any brand —</option>';
+  brandSel.innerHTML = '<option value="">\u2014 Any brand \u2014</option>';
   prioBrands.forEach(b => {
     const o = document.createElement('option'); o.value = b.id; o.textContent = b.name;
     if (item && item.brand_id === b.id) o.selected = true;
@@ -202,7 +202,7 @@ async function savePrioRule(e) {
 
   const saveBtn = document.getElementById('prio-modal-save-btn');
   saveBtn.disabled = true;
-  saveBtn.textContent = 'Saving…';
+  saveBtn.textContent = 'Saving\u2026';
 
   try {
     const payload = {
@@ -214,13 +214,13 @@ async function savePrioRule(e) {
     };
 
     if (id) {
-      const { error } = await sbClient.from('pm_vendor_item_priority').update(payload).eq('id', parseInt(id));
+      const { error } = await sbClient.from('pm_distributor_priority').update(payload).eq('id', parseInt(id));
       if (error) throw error;
       const existing = prioItems.find(r => r.id === parseInt(id));
       if (existing) Object.assign(existing, payload);
     } else {
       const { data, error } = await sbClient
-        .from('pm_vendor_item_priority')
+        .from('pm_distributor_priority')
         .insert({ ...payload, created_by: 'admin-ui' })
         .select('id').single();
       if (error) throw error;

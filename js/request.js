@@ -17,7 +17,7 @@ async function loadTemplate(productTypeId) {
 
 async function loadTemplateFields(templateId) {
   const { data, error } = await sbClient
-    .from('pm_quote_template_fields')
+    .from('pm_spec_intake_fields')
     .select(`
       id,
       sort_order,
@@ -105,7 +105,7 @@ async function initRequestForm(productTypeId, productTypeName) {
     const submitBtn = document.getElementById('request-submit-btn');
     errorEl.classList.add('hidden');
     submitBtn.disabled = true;
-    submitBtn.textContent = 'Running match…';
+    submitBtn.textContent = 'Running match\u2026';
 
     try {
       const session = await getSession();
@@ -114,13 +114,14 @@ async function initRequestForm(productTypeId, productTypeName) {
       const customerRef = document.getElementById('customer-ref').value.trim() || null;
 
       const { data: reqData, error: reqError } = await sbClient
-        .from('pm_customer_requests')
+        .from('pm_part_requests')
         .insert({
           product_type_id: productTypeId,
           template_id: currentTemplate.id,
           customer_name: customerName,
           customer_ref: customerRef,
           sales_rep: userEmail,
+          initiated_by: 'sales_rep',
           status: 'open'
         })
         .select('id')
@@ -165,7 +166,7 @@ async function initRequestForm(productTypeId, productTypeName) {
     } finally {
       const submitBtn = document.getElementById('request-submit-btn');
       submitBtn.disabled = false;
-      submitBtn.textContent = 'Run Match →';
+      submitBtn.textContent = 'Run Match \u2192';
     }
   };
 }

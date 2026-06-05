@@ -12,7 +12,7 @@ async function initAdminSpecs() {
   const errorEl   = document.getElementById('admin-specs-error');
   const wrapEl    = document.getElementById('admin-specs-table-wrap');
 
-  loadingEl.textContent = 'Loading…';
+  loadingEl.textContent = 'Loading\u2026';
   loadingEl.classList.remove('hidden');
   errorEl.classList.add('hidden');
   wrapEl.classList.add('hidden');
@@ -170,7 +170,7 @@ function renderAdminSpecsTable() {
       const isFirst = idx === 0;
       const isLast  = idx === groupSpecs.length - 1;
       const unit    = unitMap[spec.unit_id];
-      const unitStr = unit && unit.abbreviation ? unit.abbreviation : (unit ? unit.name : '—');
+      const unitStr = unit && unit.abbreviation ? unit.abbreviation : (unit ? unit.name : '\u2014');
 
       const tr = document.createElement('tr');
       if (!spec.is_active) tr.classList.add('inactive-row');
@@ -338,7 +338,7 @@ async function saveSpec(e) {
 
   const saveBtn = document.getElementById('modal-save-btn');
   saveBtn.disabled = true;
-  saveBtn.textContent = 'Saving…';
+  saveBtn.textContent = 'Saving\u2026';
 
   try {
     if (specId) {
@@ -375,7 +375,7 @@ async function saveSpec(e) {
       }).select().single();
       if (error) throw error;
 
-      // Also insert into quote_template_fields for the matching template
+      // Also insert into spec_intake_fields for the matching template
       const { data: tmpl, error: tmplErr } = await sbClient
         .from('pm_quote_templates')
         .select('id')
@@ -383,7 +383,7 @@ async function saveSpec(e) {
         .eq('is_active', true)
         .single();
       if (!tmplErr && tmpl) {
-        await sbClient.from('pm_quote_template_fields').insert({
+        await sbClient.from('pm_spec_intake_fields').insert({
           template_id: tmpl.id,
           spec_definition_id: data.id,
           sort_order: nextOrder,
