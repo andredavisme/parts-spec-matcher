@@ -575,3 +575,104 @@ Milestone 7 complete. Role design finalized for `inside_sales`, `outside_sales`,
 - Consider `#view-admin-units` screen if new spec unit types are needed
 - Consider branch scoping (`branch_id` on `customer_requests`) when multi-branch rollout begins
 - Populate real catalog data via CSV upload for remaining product types
+
+---
+
+## Milestone 9 — Schema Restructure: Customer Portal & Distributor Model
+**Status:** ✅ Complete  
+**Date:** 2026-06-05
+
+### Prior Work
+Milestone 8 complete. Role-based access implemented and validated. Sales rep and admin interfaces functional. All existing tables in place with active RLS policies.
+
+### Dependencies
+- Existing `parts_matcher` schema tables and data intact ✅
+- RLS helper functions `is_admin()` and `is_sales()` in place ✅
+- All existing `pm_*` public views in place ✅
+
+### Context: Why This Milestone
+The original schema was designed around a single distributor (Eastern Industrial Automation) where sales reps ran all requests on behalf of customers. The new model supports:
+- A **customer-facing portal** where customers can submit their own spec requests anonymously or via a session
+- A **multi-distributor architecture** where priority rules are scoped per distributor rather than globally
+- A **structured RFQ workflow** where matches that aren't exact can be escalated through a formal request-for-quote process
+
+### New Tables Created
+
+| Table | Purpose |
+|---|---|
+| `distributors` | Distributor company records (replaces implicit single-vendor assumption) |
+| `manufacturer_authorizations` | Tracks which distributors are authorized to sell which brand + product type combinations |
+| `customer_sessions` | Anonymous or authenticated customer sessions for portal-initiated requests |
+| `customer_rfq_requests` | Formal RFQ records submitted by customers when no match is satisfactory |
+| `rfq_status_log` | Append-only audit trail for RFQ status transitions |
+
+### Renamed / Restructured Tables
+
+All original tables remain in place as a safety net and are not modified. New tables were created with structural improvements and existing records copied over.
+
+| New Table | Replaces | Records Copied | Structural Changes |
+|---|---|---|---|
+| `part_requests` | `customer_requests` | 8 rows | Added `initiated_by` (`sales_rep`\|`customer`), `customer_session_id`, expanded status set |
+| `spec_intake_fields` | `quote_template_fields` | 246 rows | Added `plain_language_label` (customer-facing question text), `condition_field_id`, `condition_value` (conditional field display) |
+| `spec_match_results` | `match_results` | 6 rows | `match_notes` text converted to `spec_delta_notes` JSONB; legacy notes wrapped as `{"legacy_notes": "..."}` |
+| `distributor_priority` | `vendor_item_priority` | 3 rows | Added `distributor_id` scope; copied rows have `distributor_id = NULL` (flagged as legacy global priority) |
+
+### Migrations Applied
+
+1. **`parts_matcher_new_tables_distributors_sessions_rfq`** — Created `distributors`, `manufacturer_authorizations`, `customer_sessions`, `customer_rfq_requests`, `rfq_status_log` with indexes
+2. **`parts_matcher_new_template_fields_table`** — Created `spec_intake_fields`, copied 246 rows from `quote_template_fields`
+3. **`parts_matcher_new_match_results_and_priority_tables`** — Created `spec_match_results` and `distributor_priority`, copied existing rows
+4. **`parts_matcher_reroute_references_to_new_tables`** — Updated `run_match()` to reference `part_requests` and `distributor_priority`; dropped and recreated `pm_customer_requests`, `pm_quote_template_fields`, `pm_vendor_item_priority` views to point at new tables; added new canonical views for all new tables
+5. **`parts_matcher_rls_new_tables`** — Enabled RLS on all 9 new tables; applied full policy set for `anon`, `authenticated`, `sales_rep`, and `admin` roles; granted table and view access
+
+### RLS Policy Matrix
+
+| Table | `anon` | `authenticated` (customer) | `sales_rep` | `admin` |
+|---|---|---|---|---|
+| `distributors` | SELECT (active only) | SELECT (active only) | SELECT | ALL |
+| `manufacturer_authorizations` | SELECT (active only) | SELECT (active only) | SELECT | ALL |
+| `customer_sessions` | INSERT | SELECT/UPDATE own | SELECT/UPDATE own | ALL |
+| `part_requests` | INSERT (`initiated_by='customer'` only) | SELECT own (via session) | SELECT + INSERT + UPDATE | ALL |
+| `spec_intake_fields` | SELECT | SELECT | SELECT | ALL |
+| `spec_match_results` | SELECT (session-linked requests) | SELECT own | SELECT + INSERT | ALL |
+| `distributor_priority` | — | SELECT | SELECT | ALL |
+| `customer_rfq_requests` | INSERT | SELECT own (via session) | SELECT + UPDATE | ALL |
+| `rfq_status_log` | INSERT + SELECT | SELECT own | SELECT + INSERT | ALL |
+
+### Updated Code References
+
+| Object | Change |
+|---|---|
+| `parts_matcher.run_match()` | Now reads from `part_requests`; priority lookup from `distributor_priority` (with `distributor_id IS NULL` filter for backward compatibility) |
+| `public.pm_customer_requests` | Now points to `part_requests`; exposes `initiated_by`, `customer_session_id` |
+| `public.pm_quote_template_fields` | Now points to `spec_intake_fields`; exposes `plain_language_label`, `condition_field_id`, `condition_value` |
+| `public.pm_vendor_item_priority` | Now points to `distributor_priority`; exposes `distributor_id` |
+
+### Errors & Fixes
+
+**Column introspection required before several migrations**
+- Multiple migrations failed on first attempt due to assumed column names that differed from actual schema
+- `quote_template_fields`: assumed `display_label` — actual column is `display_hint`
+- `match_results`: assumed `priority_rank` — actual column is `vendor_priority_rank`
+- **Fix:** Ran `information_schema.columns` query before each migration to confirm actual column names
+
+**`CREATE OR REPLACE VIEW` rejected column rename**
+- `pm_customer_requests` could not be replaced in-place because the new definition exposed additional columns in a different order than the original
+- Postgres rejected the statement: `cannot change name of view column`
+- **Fix:** Used `DROP VIEW IF EXISTS` followed by `CREATE VIEW` in the same migration
+
+### Current State of Old Tables
+The following original tables are **orphaned** (no live code references them) but remain in the database as a safety net:
+- `customer_requests`
+- `quote_template_fields`
+- `match_results`
+- `vendor_item_priority`
+
+These should be dropped once the new tables are validated in production.
+
+### Next Steps → Milestone 10
+- Drop orphaned original tables (`customer_requests`, `quote_template_fields`, `match_results`, `vendor_item_priority`)
+- Update frontend JS files to reference new table/view names where applicable
+- Seed `distributors` and `manufacturer_authorizations` with Easternia data
+- Build customer portal views and flow (`#view-portal-*`)
+- Update `run_match()` to write results to `spec_match_results` and pass `distributor_id` context
