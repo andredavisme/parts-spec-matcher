@@ -1,0 +1,71 @@
+/* ===== CUSTOMER PORTAL OVERRIDES & ADDITIONS ===== */
+
+/* Header accent — teal instead of navy to visually distinguish from admin app */
+.app-header {
+  background: #0a7b6c;
+}
+
+#login-btn, .btn-primary {
+  background: #0a7b6c;
+}
+#login-btn:hover:not(:disabled), .btn-primary:hover:not(:disabled) {
+  background: #085f52;
+}
+
+.card h1 { color: #0a7b6c; }
+
+.results-table th,
+.admin-table th,
+.delta-table th { background: #0a7b6c; }
+
+.rank-cell { color: #0a7b6c; }
+
+/* Results meta row: count + print button side by side */
+.results-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.25rem;
+}
+
+.btn-print {
+  background: #eef7f6;
+  color: #0a7b6c;
+  border: 1.5px solid #9dd4cd;
+  border-radius: 7px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-print:hover { background: #c5e9e5; }
+
+/* Dashboard table — description column wide */
+#dashboard-table td:nth-child(6) {
+  font-family: monospace;
+  font-size: 0.82rem;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Hide vendor priority column in customer results
+   (6-column table: # Brand Part# Desc Score Gaps — no priority shown) */
+
+/* Print styles */
+@media print {
+  .app-header,
+  .btn-print,
+  .results-new-btn,
+  .results-dashboard-btn,
+  #logout-btn-results,
+  .miss-toggle { display: none !important; }
+
+  .delta-row { display: table-row !important; }
+  .delta-row.hidden { display: table-row !important; }
+
+  body { background: #fff; }
+  .results-table { box-shadow: none; }
+}

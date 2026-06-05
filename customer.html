@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Parts Spec Matcher — Customer Portal</title>
+  <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/customer.css" />
+</head>
+<body>
+
+<!-- ===== LOGIN ===== -->
+<div id="view-login" class="view">
+  <div class="card">
+    <h1>Parts Spec Matcher</h1>
+    <p class="subtitle">Customer Portal</p>
+    <div id="login-error" class="error-msg hidden"></div>
+    <form id="login-form">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" required autocomplete="username" />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" required autocomplete="current-password" />
+      </div>
+      <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
+    </form>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="view-dashboard" class="view hidden">
+  <header class="app-header">
+    <span class="app-title">Parts Spec Matcher &mdash; Customer Portal</span>
+    <div class="header-right">
+      <span class="user-email" id="user-email-dashboard"></span>
+      <button id="new-request-btn" class="btn-secondary">+ New Request</button>
+      <button id="logout-btn-dashboard" class="btn-secondary">Sign Out</button>
+    </div>
+  </header>
+  <main class="results-main">
+    <h2>My Requests</h2>
+    <p class="hint" id="dashboard-hint">Your submitted part requests and their top matches.</p>
+    <div id="dashboard-loading" class="hint hidden">Loading&hellip;</div>
+    <div id="dashboard-empty" class="hint hidden">No requests yet. Click <strong>+ New Request</strong> to get started.</div>
+    <div id="dashboard-table-wrap">
+      <table class="results-table" id="dashboard-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Product Type</th>
+            <th>Your Ref</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Top Match</th>
+            <th>Score</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="dashboard-tbody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- ===== SELECTOR ===== -->
+<div id="view-selector" class="view hidden">
+  <header class="app-header">
+    <span class="app-title">Parts Spec Matcher &mdash; Customer Portal</span>
+    <div class="header-right">
+      <span class="user-email" id="user-email-selector"></span>
+      <button id="selector-back-btn" class="btn-secondary">&larr; My Requests</button>
+      <button id="logout-btn-selector" class="btn-secondary">Sign Out</button>
+    </div>
+  </header>
+  <main class="selector-main">
+    <h2>New Part Request</h2>
+    <p class="hint">Select the product type you need to match.</p>
+    <div class="field">
+      <label for="product-type-select">Product Type <span class="required-star">*</span></label>
+      <select id="product-type-select"><option value="">Loading&hellip;</option></select>
+    </div>
+    <div id="selector-error" class="error-msg hidden"></div>
+    <button id="start-request-btn" class="btn-primary">Continue &rarr;</button>
+  </main>
+</div>
+
+<!-- ===== REQUEST FORM ===== -->
+<div id="view-request" class="view hidden">
+  <header class="app-header">
+    <span class="app-title">Parts Spec Matcher &mdash; Customer Portal</span>
+    <div class="header-right">
+      <span class="user-email" id="user-email-request"></span>
+      <button id="request-back-btn" class="btn-secondary">&larr; Back</button>
+      <button id="logout-btn-request" class="btn-secondary">Sign Out</button>
+    </div>
+  </header>
+  <main class="form-main">
+    <h2>Find Matching Parts</h2>
+    <p class="hint">Product type: <strong id="request-product-type-name"></strong></p>
+    <div id="request-error" class="error-msg hidden"></div>
+    <div id="request-loading" class="hint hidden">Loading fields&hellip;</div>
+    <form id="request-form">
+      <div class="meta-fields">
+        <div class="field">
+          <label for="customer-ref">Your Reference / PO # <span class="unit-hint">(optional)</span></label>
+          <input type="text" id="customer-ref" placeholder="e.g. PO-1234" />
+        </div>
+      </div>
+      <hr class="form-divider" />
+      <div id="request-fields"></div>
+      <button type="submit" id="request-submit-btn" class="btn-primary">Find Matches &rarr;</button>
+    </form>
+  </main>
+</div>
+
+<!-- ===== RESULTS ===== -->
+<div id="view-results" class="view hidden">
+  <header class="app-header">
+    <span class="app-title">Parts Spec Matcher &mdash; Customer Portal</span>
+    <div class="header-right">
+      <span class="user-email" id="user-email-results"></span>
+      <button id="results-new-btn" class="btn-secondary">+ New Request</button>
+      <button id="results-dashboard-btn" class="btn-secondary">&larr; My Requests</button>
+      <button id="logout-btn-results" class="btn-secondary">Sign Out</button>
+    </div>
+  </header>
+  <main class="results-main">
+    <h2>Matches for <span id="results-product-type-name"></span></h2>
+    <div class="results-meta-row">
+      <span id="results-count" class="hint"></span>
+      <button id="results-print-btn" class="btn-print" title="Print / Save as PDF">🖨 Print / Save PDF</button>
+    </div>
+    <div id="results-empty" class="hint hidden">No matches found for these specifications.</div>
+    <div id="results-table-wrap">
+      <table class="results-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Brand</th>
+            <th>Part Number</th>
+            <th>Description</th>
+            <th>Score</th>
+            <th>Spec Gaps</th>
+          </tr>
+        </thead>
+        <tbody id="results-tbody"></tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="js/vendor/supabase.min.js"></script>
+<script src="js/config.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/selector.js"></script>
+<script src="js/request.js"></script>
+<script src="js/results.js"></script>
+<script src="js/customer-dashboard.js"></script>
+<script src="js/customer-app.js"></script>
+</body>
+</html>
