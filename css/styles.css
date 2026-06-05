@@ -342,6 +342,81 @@ button {
   transition: width 0.4s;
 }
 
+/* ===== MISS BADGE ===== */
+.miss-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.miss-none { background: #eafaf1; color: #27ae60; }
+.miss-warn { background: #fef9e7; color: #b7770d; }
+.miss-bad  { background: #fde8e8; color: #c0392b; }
+
+.miss-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: inherit;
+  border-radius: 0;
+}
+.miss-toggle:hover .miss-badge { opacity: 0.8; }
+
+/* ===== DELTA ROW ===== */
+.delta-row td {
+  background: #f8f9ff;
+  padding: 0.75rem 1rem 1rem 2.5rem;
+  border-bottom: 2px solid #e0e4ed;
+}
+
+.delta-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.delta-table th {
+  background: #eef1f8;
+  color: #0f3460;
+  text-align: left;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.delta-table td {
+  padding: 0.3rem 0.6rem;
+  border-top: 1px solid #e8ecf4;
+  background: transparent;
+  border-bottom: none;
+}
+
+.delta-table tr:hover td { background: #eef2fc; }
+
+.delta-spec { font-weight: 600; color: #1a1a2e; white-space: nowrap; }
+.delta-type { color: #888; font-size: 0.75rem; white-space: nowrap; }
+.delta-val  { font-family: monospace; color: #444; }
+
+.delta-bar-wrap {
+  background: #e0e4ed;
+  border-radius: 3px;
+  height: 5px;
+  width: 80px;
+  overflow: hidden;
+}
+
+.delta-bar {
+  height: 100%;
+  border-radius: 3px;
+}
+
 /* ===== ADMIN VIEWS ===== */
 #view-admin-vendors,
 #view-admin-brands,
